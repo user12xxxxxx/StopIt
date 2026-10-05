@@ -30,7 +30,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,11 +62,16 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nautesh.stopit.ui.theme.StopItTheme
 
-/** Space a screen leaves at the bottom for the floating navbar: 72dp bar + 20dp inset + 8dp gap. */
-val NavBarClearance = 100.dp
+/**
+ * Space a screen leaves at the bottom for the floating navbar: 72dp bar + 20dp inset + 8dp gap, above the
+ * gesture bar. Screens draw behind the gesture bar, so this includes its height.
+ */
+val NavBarClearance: Dp
+    @Composable get() = 100.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
 private enum class Tab(val label: String, @param:DrawableRes val icon: Int) {
     Home("Home", R.drawable.ic_home),
@@ -86,7 +98,8 @@ class MainActivity : ComponentActivity() {
                     Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
-                        .safeDrawingPadding(),
+                        // Not the bottom: lists scroll on behind the gesture bar.
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
                 ) {
                     if (!usageGranted || !overlayGranted) {
                         WelcomeScreen(
@@ -146,7 +159,7 @@ private fun NavBar(current: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = M
     // Home has no floating action above the bar, so it is fully round; other tabs flatten the top to meet theirs.
     val topCorner by animateDpAsState(if (current == Tab.Home) 32.dp else 8.dp, label = "navTop")
     Surface(
-        modifier = modifier.padding(20.dp).fillMaxWidth().height(72.dp),
+        modifier = modifier.navigationBarsPadding().padding(20.dp).fillMaxWidth().height(72.dp),
         shape = RoundedCornerShape(topCorner, topCorner, 32.dp, 32.dp),
         color = colors.surfaceContainer,
     ) {

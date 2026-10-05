@@ -1,5 +1,6 @@
 package com.nautesh.stopit
 
+import android.app.KeyguardManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -8,10 +9,12 @@ import android.app.usage.UsageStatsManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 
@@ -34,12 +37,17 @@ class GuardService : Service() {
         // ponytail: polls usage events twice a second; switch to an AccessibilityService if this lags or drains battery.
         private const val POLL_MS = 500L
         private const val CHANNEL = "guard"
+        // A shorter lock is a glance away and keeps the visit.
+        private const val LONG_LOCK_MS = 3 * 60_000L
     }
 
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var usage: UsageStatsManager
     private lateinit var prefs: Prefs
+    private lateinit var power: PowerManager
+    private lateinit var keyguard: KeyguardManager
     private var since = 0L
+    private var lockedSince = 0L
 
     private val poll = object : Runnable {
         override fun run() {
@@ -52,7 +60,14 @@ class GuardService : Service() {
         super.onCreate()
         usage = getSystemService(UsageStatsManager::class.java)
         prefs = Prefs(this)
-        gate = PauseGate(packageName) { prefs.guarded }
+        power = getSystemService(PowerManager::class.java)
+        keyguard = getSystemService(KeyguardManager::class.java)
+        // ponytail: launchers read once per service start; a newly installed launcher counts after the next start.
+        val launchers = packageManager.queryIntentActivities(
+            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
+            PackageManager.MATCH_DEFAULT_ONLY,
+        ).map { it.activityInfo.packageName }.toSet()
+        gate = PauseGate(packageName, launchers) { prefs.guarded }
 
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(CHANNEL, "Guard", NotificationManager.IMPORTANCE_MIN))
@@ -80,6 +95,13 @@ class GuardService : Service() {
 
     private fun check() {
         val now = System.currentTimeMillis()
+        // Never pause behind the lock screen. Coming back after a long lock counts as reopening the app.
+        if (!power.isInteractive || keyguard.isKeyguardLocked) {
+            if (lockedSince == 0L) lockedSince = now
+            return
+        }
+        if (lockedSince != 0L && now - lockedSince >= LONG_LOCK_MS) gate?.reset()
+        lockedSince = 0L
         val events = usage.queryEvents(since, now)
         since = now
         val event = UsageEvents.Event()

@@ -17,8 +17,8 @@ android {
         applicationId = "com.nautesh.stopit"
         minSdk = 31
         targetSdk = 37
-        versionCode = 3
-        versionName = "0.2.1"
+        versionCode = 4
+        versionName = "0.2.2"
     }
 
     // Release key lives outside the repo; without the properties file, release builds are unsigned.

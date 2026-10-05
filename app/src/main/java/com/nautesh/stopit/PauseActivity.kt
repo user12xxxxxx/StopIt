@@ -143,8 +143,9 @@ class PauseActivity : ComponentActivity() {
                             val until = if (minutes == null) Long.MAX_VALUE else System.currentTimeMillis() + minutes * 60_000L
                             GuardService.gate?.allow(pkg, until)
                             prefs.recordOpened()
-                            packageManager.getLaunchIntentForPackage(pkg)?.let(::startActivity)
                         }
+                        // The app's task is right below ours, so finishing returns to it as it was. Relaunching
+                        // would lose a link opened in a custom tab, which lives in the calling app's task.
                         finish()
                     },
                 )

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -39,6 +40,7 @@ fun WelcomeScreen(usageGranted: Boolean, overlayGranted: Boolean, onGrantUsage: 
     Column(
         Modifier
             .verticalScroll(rememberScrollState())
+            .navigationBarsPadding()
             .padding(horizontal = 24.dp, vertical = 40.dp),
     ) {
         Box(
