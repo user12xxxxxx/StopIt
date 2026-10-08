@@ -1,3 +1,10 @@
 <resources>
     <style name="Theme.StopIt" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- The pause sheet slides up over the guarded app, so its window is see-through and has no window animation of its own. -->
+    <style name="Theme.StopIt.Pause">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
 </resources>

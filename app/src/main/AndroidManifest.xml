@@ -44,7 +44,8 @@
             android:name=".PauseActivity"
             android:excludeFromRecents="true"
             android:exported="false"
-            android:taskAffinity="" />
+            android:taskAffinity=""
+            android:theme="@style/Theme.StopIt.Pause" />
 
         <service
             android:name=".GuardService"

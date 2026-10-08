@@ -2,7 +2,6 @@ package com.nautesh.stopit
 
 import android.app.usage.UsageStatsManager
 import android.content.Context
-import android.graphics.Color
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -12,6 +11,8 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -28,7 +29,10 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -49,7 +53,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -62,6 +66,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -80,7 +85,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.random.Random
 
-/** The fullscreen pause shown before a guarded app. */
+/** The pause shown before a guarded app: a bottom sheet over the dimmed app (the window is translucent). */
 class PauseActivity : ComponentActivity() {
 
     companion object {
@@ -99,8 +104,8 @@ class PauseActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // The pause screen is always dark, so the system bars need light icons.
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         val pkg = intent.getStringExtra(EXTRA_PACKAGE) ?: return finish()
         val label = runCatching {
@@ -177,6 +182,44 @@ private fun PauseScreen(
 ) {
     // "Open anyway" leads to the after-the-pause screen rather than straight into the app.
     var deciding by rememberSaveable { mutableStateOf(false) }
+    val scrim = rememberEntrance(dampingRatio = 1f, stiffness = 1600f)
+    val sheet = rememberEntrance()
+    val colors = MaterialTheme.colorScheme
+    Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = 0.6f * scrim.value }.background(Color.Black))
+        Column(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .graphicsLayer { translationY = (1 - sheet.value) * size.height }
+                // Keeps the bottom covered while the spring overshoots upward.
+                .drawBehind { drawRect(colors.background, Offset(0f, size.height), size.copy(height = 80.dp.toPx())) }
+                .background(colors.background, RoundedCornerShape(28.dp, 28.dp, 0.dp, 0.dp))
+                .navigationBarsPadding()
+                .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 30.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(Modifier.size(32.dp, 4.dp).alpha(0.5f).background(colors.onSurfaceVariant, RoundedCornerShape(2.dp)))
+            Spacer(Modifier.height(20.dp))
+            SheetContent(deciding, appName, minSeconds, maxSeconds, message, visits, minutesToday, onClose, onOpenFor) { deciding = true }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalSharedTransitionApi::class)
+private fun SheetContent(
+    deciding: Boolean,
+    appName: String,
+    minSeconds: Int,
+    maxSeconds: Int,
+    message: String,
+    visits: Int,
+    minutesToday: Int,
+    onClose: () -> Unit,
+    onOpenFor: (minutes: Int?) -> Unit,
+    onOpenAnyway: () -> Unit,
+) {
     SharedTransitionLayout {
         AnimatedContent(
             deciding,
@@ -188,9 +231,30 @@ private fun PauseScreen(
             if (decide) {
                 DecideScreen(appName, visits, minutesToday, onClose, onOpenFor, openButton)
             } else {
-                CountdownScreen(appName, minSeconds, maxSeconds, message, onClose, onOpenAnyway = { deciding = true }, openButton)
+                CountdownScreen(appName, minSeconds, maxSeconds, message, onClose, onOpenAnyway, openButton)
             }
         }
+    }
+}
+
+/** Springs from 0 to 1 once, [delayMs] after it first composes. Read `.value` in a graphicsLayer to skip recomposition. */
+@Composable
+private fun rememberEntrance(delayMs: Long = 0, dampingRatio: Float = 0.8f, stiffness: Float = 380f): Animatable<Float, AnimationVector1D> {
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        delay(delayMs)
+        progress.animateTo(1f, spring(dampingRatio, stiffness))
+    }
+    return progress
+}
+
+/** The sheet's text and buttons rise 24 dp and fade in, 50 ms apart, once the sheet is on its way up. */
+@Composable
+private fun Modifier.rise(index: Int): Modifier {
+    val p = rememberEntrance(140L + index * 50)
+    return graphicsLayer {
+        translationY = (1 - p.value) * 24.dp.toPx()
+        alpha = p.value.coerceIn(0f, 1f)
     }
 }
 
@@ -225,17 +289,19 @@ private fun CountdownScreen(
     )
     val spin by motion.animateFloat(0f, 360f, infiniteRepeatable(tween(24_000, easing = LinearEasing)), label = "spin")
     val scale by animateFloatAsState(if (done) 1f else breath, label = "scale")
+    // The shape pops in just after the sheet starts rising.
+    val pop = rememberEntrance(80, dampingRatio = 0.6f, stiffness = 800f)
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(colors.background)
-            .safeDrawingPadding()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Spacer(Modifier.weight(1f))
-        Box(Modifier.size(300.dp).graphicsLayer { scaleX = scale; scaleY = scale }, contentAlignment = Alignment.Center) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier.size(168.dp).graphicsLayer {
+                val s = (0.6f + 0.4f * pop.value) * scale
+                scaleX = s
+                scaleY = s
+                alpha = pop.value.coerceIn(0f, 1f)
+            },
+            contentAlignment = Alignment.Center,
+        ) {
             // Only the shape turns; the count stays upright on top of it.
             Box(Modifier.matchParentSize().rotate(spin).background(colors.primaryContainer, lobedShape(lobes = 9, depth = 0.08f)))
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -257,11 +323,11 @@ private fun CountdownScreen(
                         Icon(
                             painterResource(R.drawable.ic_check),
                             contentDescription = null,
-                            Modifier.size(112.dp),
+                            Modifier.size(68.dp),
                             tint = colors.onPrimaryContainer,
                         )
                     } else {
-                        Text("$n", fontSize = 112.sp, fontWeight = FontWeight.ExtraBold, color = colors.onPrimaryContainer)
+                        Text("$n", fontSize = 68.sp, fontWeight = FontWeight.ExtraBold, color = colors.onPrimaryContainer)
                     }
                 }
                 Text(
@@ -271,27 +337,31 @@ private fun CountdownScreen(
                 )
             }
         }
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(18.dp))
         Text(
             if (done) "Still want it?" else "Take a breath.",
-            style = MaterialTheme.typography.displaySmall,
+            fontSize = 30.sp,
             fontWeight = FontWeight.ExtraBold,
             color = colors.onBackground,
+            modifier = Modifier.rise(0),
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
         Text(
             if (done) "You made it through the pause. Your call now." else message,
             style = MaterialTheme.typography.bodyLarge,
             color = colors.onSurfaceVariant,
             textAlign = TextAlign.Center,
+            // Two lines reserved so the sheet keeps its height when the message changes.
+            minLines = 2,
+            modifier = Modifier.rise(1),
         )
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(16.dp))
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(onClick = onClose, modifier = Modifier.fillMaxWidth().height(64.dp)) {
+            Button(onClick = onClose, modifier = Modifier.rise(2).fillMaxWidth().height(64.dp)) {
                 Icon(painterResource(R.drawable.ic_close), contentDescription = null, Modifier.size(22.dp))
                 Text("Close $appName", fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 10.dp))
             }
-            OutlinedButton(onClick = onOpenAnyway, enabled = done, modifier = openButton.fillMaxWidth().height(56.dp)) {
+            OutlinedButton(onClick = onOpenAnyway, enabled = done, modifier = openButton.rise(3).fillMaxWidth().height(56.dp)) {
                 Text(if (done) "Open anyway" else "Open anyway in $left s")
             }
         }
@@ -331,14 +401,7 @@ private fun DecideScreen(
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(colors.background)
-            .safeDrawingPadding()
-            .padding(24.dp),
-    ) {
-        Spacer(Modifier.height(40.dp))
+    Column(Modifier.fillMaxWidth()) {
         Text(
             "This is your\n${ordinal(visits)} visit\ntoday.",
             fontSize = 52.sp,
@@ -357,8 +420,8 @@ private fun DecideScreen(
             modifier = Modifier.padding(top = 14.dp),
         )
 
-        // The time menu stacks up into this empty space, above the split button that opens it.
-        Box(Modifier.weight(1f).fillMaxWidth()) {
+        // The time menu stacks up into this space above the split button: room for three 56 dp rows.
+        Box(Modifier.height(188.dp).fillMaxWidth()) {
             // Qualified: inside the Column, the ColumnScope overload would otherwise be picked.
             androidx.compose.animation.AnimatedVisibility(menuOpen, Modifier.align(Alignment.BottomEnd), enter = EnterTransition.None, exit = ExitTransition.None) {
                 Column(
