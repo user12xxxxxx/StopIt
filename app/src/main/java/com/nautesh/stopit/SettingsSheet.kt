@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,9 +20,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -95,17 +99,32 @@ private fun PageHeader(title: String, onBack: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AppearancePage(theme: ThemeMode, onTheme: (ThemeMode) -> Unit, onBack: () -> Unit) {
     PageHeader("Appearance", onBack)
     Text("Theme", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 4.dp))
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+    // Connected button group: the picked option turns from round to square ends, and pressing one squeezes it.
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
         ThemeMode.entries.forEachIndexed { i, mode ->
-            SegmentedButton(
-                selected = mode == theme,
-                onClick = { onTheme(mode) },
-                shape = SegmentedButtonDefaults.itemShape(i, ThemeMode.entries.size),
-            ) { Text(mode.label) }
+            ToggleButton(
+                checked = mode == theme,
+                onCheckedChange = { onTheme(mode) },
+                shapes = when (i) {
+                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    ThemeMode.entries.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = ButtonDefaults.MediumContainerHeight)
+                    .semantics { role = Role.RadioButton },
+            ) {
+                Text(
+                    mode.label,
+                    style = if (mode == theme) MaterialTheme.typography.titleMediumEmphasized else MaterialTheme.typography.titleMedium,
+                )
+            }
         }
     }
 }
