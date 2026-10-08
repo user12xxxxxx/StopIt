@@ -182,9 +182,20 @@ fun PauseSettingsScreen(prefs: Prefs, onPreview: () -> Unit) {
                 }
                 Switch(checked = amoled, onCheckedChange = null)
             }
-            // Removing another app's task needs REMOVE_TASKS, which only the system, the shell user (Shizuku) or root holds.
-            WipRow("Clear from Recents", "Close also clears the app from Recents, through Shizuku", RoundedCornerShape(6.dp), tag = "Needs Shizuku")
-            WipRow("Clear from Recents", "Close also clears the app from Recents, through root", RoundedCornerShape(6.dp, 6.dp, 24.dp, 24.dp), tag = "Needs root")
+            // Extensions unlock what a normal app can't do: seeing and removing other apps' Recents cards needs the shell
+            // user (Shizuku) or root. Each enables every such feature at once.
+            WipRow(
+                "Enable Shizuku extension",
+                "Close also clears the app from Recents, and swiping an app away ends its timer",
+                RoundedCornerShape(6.dp),
+                tag = "Needs Shizuku",
+            )
+            WipRow(
+                "Enable root extension",
+                "The same, through root instead of Shizuku",
+                RoundedCornerShape(6.dp, 6.dp, 24.dp, 24.dp),
+                tag = "Needs root",
+            )
         }
     }
 
