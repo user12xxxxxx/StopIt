@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.nautesh.stopit.ui.theme.LocalSemanticColors
 
 private class InstalledApp(val pkg: String, val label: String, val icon: ImageBitmap, val category: Int)
 
@@ -63,10 +64,6 @@ private val filters = listOf(
     "Video" to ApplicationInfo.CATEGORY_VIDEO,
     "Games" to ApplicationInfo.CATEGORY_GAME,
 )
-
-// Mockup colours used only on this screen.
-private val SavedGreen = Color(0xFFC6ECCB)
-private val OnSavedGreen = Color(0xFF0F3A1A)
 
 private fun appCount(n: Int) = if (n == 1) "1 app" else "$n apps"
 
@@ -198,8 +195,8 @@ fun AppsScreen(prefs: Prefs) {
             },
             shape = RoundedCornerShape(28.dp, 28.dp, 8.dp, 8.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = animateColorAsState(if (dirty) colors.primaryContainer else SavedGreen, label = "save").value,
-                contentColor = animateColorAsState(if (dirty) colors.onPrimaryContainer else OnSavedGreen, label = "onSave").value,
+                containerColor = animateColorAsState(if (dirty) colors.primaryContainer else LocalSemanticColors.current.walkedAway, label = "save").value,
+                contentColor = animateColorAsState(if (dirty) colors.onPrimaryContainer else LocalSemanticColors.current.onWalkedAway, label = "onSave").value,
             ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)

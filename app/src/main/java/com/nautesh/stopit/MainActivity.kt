@@ -9,6 +9,7 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
@@ -20,6 +21,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Arrangement
@@ -47,7 +49,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -91,7 +95,22 @@ class MainActivity : ComponentActivity() {
         prefs = Prefs(this)
         checkPermissions() // Before the first frame, so Welcome doesn't flash for granted users.
         setContent {
-            StopItTheme {
+            var theme by remember { mutableStateOf(prefs.theme) }
+            val dark = when (theme) {
+                ThemeMode.System -> isSystemInDarkTheme()
+                ThemeMode.Light -> false
+                ThemeMode.Dark -> true
+            }
+            // System bar icons follow the app's theme, which can differ from the system's.
+            LaunchedEffect(dark) {
+                val bars = if (dark) {
+                    SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                } else {
+                    SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                }
+                enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+            }
+            StopItTheme(dark) {
                 var tab by rememberSaveable { mutableStateOf(Tab.Home) }
                 BackHandler(enabled = tab != Tab.Home) { tab = Tab.Home }
                 Box(
@@ -123,7 +142,12 @@ class MainActivity : ComponentActivity() {
                     ) { shown ->
                         when (shown) {
                             // Re-read counters each time the user comes back; they change while we're in the background.
-                            Tab.Home -> key(resumeCount) { HomeScreen(prefs) }
+                            Tab.Home -> key(resumeCount) {
+                                HomeScreen(prefs, theme) {
+                                    prefs.theme = it
+                                    theme = it
+                                }
+                            }
                             Tab.Apps -> AppsScreen(prefs)
                             Tab.Pause -> PauseSettingsScreen(prefs) { PauseActivity.start(this@MainActivity, packageName) }
                         }

@@ -29,9 +29,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nautesh.stopit.ui.theme.lobedShape
-
-// Mockup's "Done" green; not part of the theme because it's only used here.
-private val DoneGreen = Color(0xFF2F6A3E)
+import com.nautesh.stopit.ui.theme.LocalSemanticColors
 
 /** Shown instead of the tabs until both special permissions are granted. */
 @Composable
@@ -120,8 +118,8 @@ private fun PermissionCard(
         }
         if (granted) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(painterResource(R.drawable.ic_check), contentDescription = null, Modifier.size(18.dp), tint = DoneGreen)
-                Text("Done", color = DoneGreen, fontWeight = FontWeight.Bold)
+                Icon(painterResource(R.drawable.ic_check), contentDescription = null, Modifier.size(18.dp), tint = LocalSemanticColors.current.done)
+                Text("Done", color = LocalSemanticColors.current.done, fontWeight = FontWeight.Bold)
             }
         } else {
             Button(

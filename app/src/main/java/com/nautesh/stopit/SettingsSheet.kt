@@ -19,6 +19,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,23 +39,29 @@ import androidx.compose.ui.unit.dp
 
 private const val GITHUB_URL = "https://github.com/user12xxxxxx/StopIt"
 
-/** The gear's bottom sheet: a short menu, with "About app" opening in place. */
+/** The gear's bottom sheet: a short menu, with "About app" and "Appearance" opening in place. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsSheet(onDismiss: () -> Unit) {
-    var about by remember { mutableStateOf(false) }
+fun SettingsSheet(theme: ThemeMode, onTheme: (ThemeMode) -> Unit, onDismiss: () -> Unit) {
+    var page by remember { mutableStateOf(Page.Menu) }
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
         Column(
             Modifier.padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (about) AboutPage(onBack = { about = false }) else Menu(onAbout = { about = true })
+            when (page) {
+                Page.Menu -> Menu(onAbout = { page = Page.About }, onAppearance = { page = Page.Appearance })
+                Page.About -> AboutPage(onBack = { page = Page.Menu })
+                Page.Appearance -> AppearancePage(theme, onTheme, onBack = { page = Page.Menu })
+            }
         }
     }
 }
 
+private enum class Page { Menu, About, Appearance }
+
 @Composable
-private fun Menu(onAbout: () -> Unit) {
+private fun Menu(onAbout: () -> Unit, onAppearance: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Button(
         onClick = onAbout,
@@ -60,9 +69,8 @@ private fun Menu(onAbout: () -> Unit) {
         colors = ButtonDefaults.buttonColors(containerColor = colors.surfaceContainerHigh, contentColor = colors.onSurface),
         modifier = Modifier.fillMaxWidth().height(64.dp),
     ) { ButtonContent(R.drawable.ic_info, "About app") }
-    // ponytail: Appearance has no page yet; it does nothing until its options are decided.
     Button(
-        onClick = {},
+        onClick = onAppearance,
         shape = RoundedCornerShape(32.dp),
         colors = ButtonDefaults.buttonColors(containerColor = colors.primaryContainer, contentColor = colors.onPrimaryContainer),
         modifier = Modifier.fillMaxWidth().height(64.dp),
@@ -75,19 +83,39 @@ private fun ButtonContent(@DrawableRes icon: Int, label: String) {
     Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 10.dp))
 }
 
+/** A sub-page's title row, with a back button to the menu. */
 @Composable
-private fun AboutPage(onBack: () -> Unit) {
-    val context = LocalContext.current
-    val colors = MaterialTheme.colorScheme
-    val version = remember { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
-
+private fun PageHeader(title: String, onBack: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         IconButton(
             onClick = onBack,
-            colors = IconButtonDefaults.iconButtonColors(containerColor = colors.surfaceContainerHigh),
+            colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         ) { Icon(painterResource(R.drawable.ic_back), contentDescription = "Back") }
-        Text("About app", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
     }
+}
+
+@Composable
+private fun AppearancePage(theme: ThemeMode, onTheme: (ThemeMode) -> Unit, onBack: () -> Unit) {
+    PageHeader("Appearance", onBack)
+    Text("Theme", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 4.dp))
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        ThemeMode.entries.forEachIndexed { i, mode ->
+            SegmentedButton(
+                selected = mode == theme,
+                onClick = { onTheme(mode) },
+                shape = SegmentedButtonDefaults.itemShape(i, ThemeMode.entries.size),
+            ) { Text(mode.label) }
+        }
+    }
+}
+
+@Composable
+private fun AboutPage(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val version = remember { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
+
+    PageHeader("About app", onBack)
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         InfoRow(R.drawable.ic_info, "Version", "StopIt $version", RoundedCornerShape(24.dp, 24.dp, 6.dp, 6.dp))
         InfoRow(

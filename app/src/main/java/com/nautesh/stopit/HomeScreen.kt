@@ -53,13 +53,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nautesh.stopit.ui.theme.lobedShape
+import com.nautesh.stopit.ui.theme.LocalSemanticColors
 
 @Composable
-fun HomeScreen(prefs: Prefs) {
+fun HomeScreen(prefs: Prefs, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
     val context = LocalContext.current
     var guarding by remember { mutableStateOf(prefs.guarding) }
     var settingsOpen by remember { mutableStateOf(false) }
-    if (settingsOpen) SettingsSheet(onDismiss = { settingsOpen = false })
+    if (settingsOpen) SettingsSheet(theme, onTheme, onDismiss = { settingsOpen = false })
     // The saved set can name apps that aren't installed (the defaults), so count installed ones only.
     val appCount = prefs.guarded.count { context.packageManager.getLaunchIntentForPackage(it) != null }
     val colors = MaterialTheme.colorScheme
@@ -171,15 +172,15 @@ fun HomeScreen(prefs: Prefs) {
             StatCard(
                 value = prefs.walkAwaysToday,
                 label = "Walked away today",
-                color = WalkedAwayTint,
-                contentColor = OnWalkedAwayTint,
+                color = LocalSemanticColors.current.walkedAway,
+                contentColor = LocalSemanticColors.current.onWalkedAway,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
             StatCard(
                 value = prefs.openedToday,
                 label = "Opened anyway today",
-                color = OpenedTint,
-                contentColor = OnOpenedTint,
+                color = LocalSemanticColors.current.opened,
+                contentColor = LocalSemanticColors.current.onOpened,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
         }
@@ -202,12 +203,6 @@ private fun StatCard(value: Int, label: String, color: Color, contentColor: Colo
         }
     }
 }
-
-// Stat card tints matching the trend chart: green for walked away, red for opened anyway.
-private val WalkedAwayTint = Color(0xFFC6ECCB)
-private val OnWalkedAwayTint = Color(0xFF0F3A1A)
-private val OpenedTint = Color(0xFFFFDAD4)
-private val OnOpenedTint = Color(0xFF410001)
 
 /** Counts up from 0 when first shown, then eases to each new [value]. */
 @Composable

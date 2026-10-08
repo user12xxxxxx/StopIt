@@ -95,9 +95,9 @@ fun PauseSettingsScreen(prefs: Prefs, onPreview: () -> Unit) {
                         valueRange = 1f..30f,
                         steps = 28,
                         colors = SliderDefaults.colors(
-                            thumbColor = colors.tertiary,
-                            activeTrackColor = colors.tertiary,
-                            inactiveTrackColor = colors.tertiary.copy(alpha = 0.24f),
+                            thumbColor = colors.onTertiaryContainer,
+                            activeTrackColor = colors.onTertiaryContainer,
+                            inactiveTrackColor = colors.onTertiaryContainer.copy(alpha = 0.24f),
                             activeTickColor = Color.Transparent,
                             inactiveTickColor = Color.Transparent,
                         ),

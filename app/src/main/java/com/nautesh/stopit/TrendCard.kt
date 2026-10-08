@@ -50,12 +50,7 @@ import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
-
-// Pair checked with the dataviz palette validator against the card colour: distinguishable for
-// red-green colour-blind viewers through lightness. The coral is under 3:1 on the card, so the
-// readout row always names both values next to their swatches.
-private val WalkedAwayGreen = Color(0xFF1E6E40)
-private val OpenedRed = Color(0xFFEB6F5C)
+import com.nautesh.stopit.ui.theme.LocalSemanticColors
 
 /** Home's trend chart: walked away (green) and opened anyway (red) over the last week or four weeks. */
 @Composable
@@ -69,6 +64,7 @@ fun TrendCard(history: Map<LocalDate, DayCount>) {
     }
     var picked by rememberSaveable(monthly) { mutableStateOf(points.lastIndex) }
     val colors = MaterialTheme.colorScheme
+    val semantic = LocalSemanticColors.current
 
     Surface(color = colors.surfaceContainerLow, shape = RoundedCornerShape(28.dp)) {
         Column(Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -88,9 +84,9 @@ fun TrendCard(history: Map<LocalDate, DayCount>) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 val style = MaterialTheme.typography.bodySmall
                 Text("${labels[picked]} ·", style = style, color = colors.onSurfaceVariant)
-                Swatch(WalkedAwayGreen)
+                Swatch(semantic.walkedAwayLine)
                 Text("${sel.walkAways} walked away ·", style = style, color = colors.onSurfaceVariant)
-                Swatch(OpenedRed)
+                Swatch(semantic.openedLine)
                 Text("${sel.opened} opened", style = style, color = colors.onSurfaceVariant)
             }
 
@@ -107,7 +103,7 @@ fun TrendCard(history: Map<LocalDate, DayCount>) {
                     // Points sit mid-column; 6dp headroom keeps the markers inside the box.
                     fun at(i: Int, v: Int) = Offset(step * (i + 0.5f), size.height - 6.dp.toPx() - v / top.toFloat() * (size.height - 12.dp.toPx()))
                     drawLine(colors.outlineVariant, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
-                    for ((color, value) in listOf<Pair<Color, (DayCount) -> Int>>(WalkedAwayGreen to { it.walkAways }, OpenedRed to { it.opened })) {
+                    for ((color, value) in listOf<Pair<Color, (DayCount) -> Int>>(semantic.walkedAwayLine to { it.walkAways }, semantic.openedLine to { it.opened })) {
                         val path = Path()
                         points.forEachIndexed { i, (_, c) ->
                             val o = at(i, value(c))

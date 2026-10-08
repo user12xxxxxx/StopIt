@@ -29,6 +29,11 @@ class Prefs(context: Context) {
         get() = prefs.getBoolean("amoled", false)
         set(value) = prefs.edit { putBoolean("amoled", value) }
 
+    /** Light, dark, or following the system setting. */
+    var theme: ThemeMode
+        get() = runCatching { ThemeMode.valueOf(prefs.getString("theme", null)!!) }.getOrDefault(ThemeMode.System)
+        set(value) = prefs.edit { putString("theme", value.name) }
+
     /** Whether the user wants the guard running; the boot receiver and Home read it. */
     var guarding: Boolean
         get() = prefs.getBoolean("guarding", true)
@@ -104,3 +109,5 @@ class Prefs(context: Context) {
         const val DEFAULT_MESSAGE = "What were you about to look for?"
     }
 }
+
+enum class ThemeMode(val label: String) { System("System"), Light("Light"), Dark("Dark") }
