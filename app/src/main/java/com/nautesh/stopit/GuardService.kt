@@ -112,7 +112,7 @@ class GuardService : Service() {
         }
         val gate = gate ?: return
         when {
-            latest != null && gate.onForeground(latest) -> pause(latest)
+            latest != null && gate.onForeground(latest, now) -> pause(latest)
             // The visit's time limit ran out while the app is still open.
             gate.expired(now) -> gate.current?.let(::pause)
         }

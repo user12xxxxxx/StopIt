@@ -9,70 +9,85 @@ class PauseGateTest {
 
     @Test
     fun detourThroughOtherAppKeepsTheVisit() {
-        gate.onForeground("insta")
-        gate.onForeground("me")
+        gate.onForeground("insta", 0)
+        gate.onForeground("me", 0)
         gate.allow("insta", untilMillis = 1_000)
-        gate.onForeground("insta")
-        assertFalse(gate.onForeground("chrome"))
-        assertFalse(gate.onForeground("insta"))
+        gate.onForeground("insta", 0)
+        assertFalse(gate.onForeground("chrome", 0))
+        assertFalse(gate.onForeground("insta", 0))
         assertTrue(gate.expired(1_000))
     }
 
     @Test
     fun allowancesArePerApp() {
-        gate.onForeground("insta")
-        gate.onForeground("me")
-        gate.allow("insta", untilMillis = Long.MAX_VALUE)
-        gate.onForeground("insta")
-        assertTrue(gate.onForeground("tiktok"))
-        gate.onForeground("me")
-        gate.allow("tiktok", untilMillis = Long.MAX_VALUE)
-        assertFalse(gate.onForeground("tiktok"))
-        assertFalse(gate.onForeground("insta"))
-        gate.onForeground("launcher")
-        assertTrue(gate.onForeground("insta"))
+        gate.onForeground("insta", 0)
+        gate.onForeground("me", 0)
+        gate.allow("insta", untilMillis = PauseGate.NO_LIMIT)
+        gate.onForeground("insta", 0)
+        assertTrue(gate.onForeground("tiktok", 0))
+        gate.onForeground("me", 0)
+        gate.allow("tiktok", untilMillis = PauseGate.NO_LIMIT)
+        assertFalse(gate.onForeground("tiktok", 0))
+        assertFalse(gate.onForeground("insta", 0))
+        gate.onForeground("launcher", 0)
+        assertTrue(gate.onForeground("insta", 0))
     }
 
     @Test
     fun resetPausesTheAppAlreadyInFront() {
-        gate.onForeground("insta")
-        gate.onForeground("me")
-        gate.allow("insta", untilMillis = Long.MAX_VALUE)
-        gate.onForeground("insta")
+        gate.onForeground("insta", 0)
+        gate.onForeground("me", 0)
+        gate.allow("insta", untilMillis = PauseGate.NO_LIMIT)
+        gate.onForeground("insta", 0)
         gate.reset()
-        assertTrue(gate.onForeground("insta"))
+        assertTrue(gate.onForeground("insta", 0))
     }
 
     @Test
     fun pausesGuardedAppOnlyWhenItArrives() {
-        assertFalse(gate.onForeground("launcher"))
-        assertTrue(gate.onForeground("insta"))
-        assertFalse(gate.onForeground("insta"))
+        assertFalse(gate.onForeground("launcher", 0))
+        assertTrue(gate.onForeground("insta", 0))
+        assertFalse(gate.onForeground("insta", 0))
     }
 
     @Test
-    fun allowedAppStaysOpenUntilUserLeavesIt() {
-        assertTrue(gate.onForeground("insta"))
-        assertFalse(gate.onForeground("me"))
+    fun noLimitVisitLastsUntilUserLeaves() {
+        assertTrue(gate.onForeground("insta", 0))
+        assertFalse(gate.onForeground("me", 0))
+        gate.allow("insta", untilMillis = PauseGate.NO_LIMIT)
+        assertFalse(gate.onForeground("insta", 0))
+        assertFalse(gate.onForeground("launcher", 0))
+        assertTrue(gate.onForeground("insta", 0))
+    }
+
+    @Test
+    fun timedVisitSurvivesLeavingUntilItsTimeIsUp() {
+        gate.onForeground("insta", 0)
+        gate.onForeground("me", 0)
         gate.allow("insta", untilMillis = 1_000)
-        assertFalse(gate.onForeground("insta"))
-        assertFalse(gate.onForeground("launcher"))
-        assertTrue(gate.onForeground("insta"))
+        gate.onForeground("insta", 0)
+        gate.onForeground("launcher", 100)
+        assertFalse(gate.onForeground("insta", 500))
+        gate.onForeground("launcher", 600)
+        gate.reset()
+        assertFalse(gate.onForeground("insta", 900))
+        gate.onForeground("launcher", 950)
+        assertTrue(gate.onForeground("insta", 1_000))
     }
 
     @Test
     fun returningFromPauseScreenWithoutAllowingPausesAgain() {
-        assertTrue(gate.onForeground("insta"))
-        assertFalse(gate.onForeground("me"))
-        assertTrue(gate.onForeground("insta"))
+        assertTrue(gate.onForeground("insta", 0))
+        assertFalse(gate.onForeground("me", 0))
+        assertTrue(gate.onForeground("insta", 0))
     }
 
     @Test
     fun timeLimitExpiresOnceWhileAppIsInFront() {
-        gate.onForeground("insta")
-        gate.onForeground("me")
+        gate.onForeground("insta", 0)
+        gate.onForeground("me", 0)
         gate.allow("insta", untilMillis = 1_000)
-        gate.onForeground("insta")
+        gate.onForeground("insta", 0)
         assertFalse(gate.expired(999))
         assertTrue(gate.expired(1_000))
         assertFalse(gate.expired(2_000))
@@ -80,11 +95,11 @@ class PauseGateTest {
 
     @Test
     fun timeLimitDoesNotFireAfterUserLeft() {
-        gate.onForeground("insta")
-        gate.onForeground("me")
+        gate.onForeground("insta", 0)
+        gate.onForeground("me", 0)
         gate.allow("insta", untilMillis = 1_000)
-        gate.onForeground("insta")
-        gate.onForeground("launcher")
+        gate.onForeground("insta", 0)
+        gate.onForeground("launcher", 0)
         assertFalse(gate.expired(5_000))
     }
 }

@@ -155,8 +155,8 @@ class PauseActivity : ComponentActivity() {
                     onClose = close,
                     onOpenFor = { minutes ->
                         if (!preview) {
-                            // No limit: allowed until the user leaves the app.
-                            val until = if (minutes == null) Long.MAX_VALUE else System.currentTimeMillis() + minutes * 60_000L
+                            // No limit: allowed until the user leaves the app. A timed visit lasts its time, in and out of the app.
+                            val until = if (minutes == null) PauseGate.NO_LIMIT else System.currentTimeMillis() + minutes * 60_000L
                             GuardService.gate?.allow(pkg, until)
                             prefs.recordOpened()
                         }
