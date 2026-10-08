@@ -67,6 +67,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
@@ -189,24 +190,32 @@ private fun PauseScreen(
 ) {
     // "Open anyway" leads to the after-the-pause screen rather than straight into the app.
     var deciding by rememberSaveable { mutableStateOf(false) }
-    val scrim = rememberEntrance(dampingRatio = 1f, stiffness = 1600f)
     val sheet = rememberEntrance()
+    // The scalloped shape breathes (4 s in, 4 s out), and the blur behind breathes with it.
+    val breath = rememberInfiniteTransition(label = "breath").animateFloat(
+        initialValue = 0.9f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(tween(4000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "breath",
+    )
     val colors = MaterialTheme.colorScheme
     // The app behind is blurred under a thin dim that keeps the white status bar icons readable over light apps.
+    // Both build up with the sheet's spring, so the background softens as the sheet rises.
     // When the system has blur off (battery saver, some devices), the dim alone is stronger.
     val activity = LocalContext.current as Activity
     val blur = remember { activity.windowManager.isCrossWindowBlurEnabled }
     val blurPx = with(LocalDensity.current) { 32.dp.toPx() }
     if (blur) {
         LaunchedEffect(Unit) {
-            snapshotFlow { scrim.value }.collect { p ->
+            // ponytail: updates the window every frame for the whole pause; drop the breathing if battery use shows up.
+            snapshotFlow { sheet.value * (0.75f + 0.25f * (breath.value - 0.9f) / 0.14f) }.collect { p ->
                 activity.window.attributes = activity.window.attributes.apply { blurBehindRadius = (p * blurPx).toInt() }
             }
         }
     }
     Box(Modifier.fillMaxSize()) {
         val dim = if (blur) 0.2f else 0.6f
-        Box(Modifier.fillMaxSize().graphicsLayer { alpha = dim * scrim.value }.background(Color.Black))
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = dim * sheet.value.coerceIn(0f, 1f) }.background(Color.Black))
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
@@ -221,7 +230,7 @@ private fun PauseScreen(
         ) {
             Box(Modifier.size(32.dp, 4.dp).alpha(0.5f).background(colors.onSurfaceVariant, RoundedCornerShape(2.dp)))
             Spacer(Modifier.height(20.dp))
-            SheetContent(deciding, appName, minSeconds, maxSeconds, message, visits, minutesToday, onClose, onOpenFor) { deciding = true }
+            SheetContent(deciding, breath, appName, minSeconds, maxSeconds, message, visits, minutesToday, onClose, onOpenFor) { deciding = true }
         }
     }
 }
@@ -230,6 +239,7 @@ private fun PauseScreen(
 @OptIn(ExperimentalSharedTransitionApi::class)
 private fun SheetContent(
     deciding: Boolean,
+    breath: State<Float>,
     appName: String,
     minSeconds: Int,
     maxSeconds: Int,
@@ -251,7 +261,7 @@ private fun SheetContent(
             if (decide) {
                 DecideScreen(appName, visits, minutesToday, onClose, onOpenFor, openButton)
             } else {
-                CountdownScreen(appName, minSeconds, maxSeconds, message, onClose, onOpenAnyway, openButton)
+                CountdownScreen(breath, appName, minSeconds, maxSeconds, message, onClose, onOpenAnyway, openButton)
             }
         }
     }
@@ -280,6 +290,7 @@ private fun Modifier.rise(index: Int): Modifier {
 
 @Composable
 private fun CountdownScreen(
+    breath: State<Float>,
     appName: String,
     minSeconds: Int,
     maxSeconds: Int,
@@ -299,16 +310,10 @@ private fun CountdownScreen(
     val done = left == 0
     val colors = MaterialTheme.colorScheme
 
-    // The scalloped shape breathes (4 s in, 4 s out) and slowly turns; the breathing settles when the pause ends.
+    // The scalloped shape slowly turns, and breathes until the pause ends.
     val motion = rememberInfiniteTransition(label = "pause")
-    val breath by motion.animateFloat(
-        initialValue = 0.9f,
-        targetValue = 1.04f,
-        animationSpec = infiniteRepeatable(tween(4000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "breath",
-    )
     val spin by motion.animateFloat(0f, 360f, infiniteRepeatable(tween(24_000, easing = LinearEasing)), label = "spin")
-    val scale by animateFloatAsState(if (done) 1f else breath, label = "scale")
+    val scale by animateFloatAsState(if (done) 1f else breath.value, label = "scale")
     // The shape pops in just after the sheet starts rising.
     val pop = rememberEntrance(80, dampingRatio = 0.6f, stiffness = 800f)
 
