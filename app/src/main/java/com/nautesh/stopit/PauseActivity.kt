@@ -4,6 +4,7 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.Window
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
@@ -12,7 +13,9 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -40,7 +43,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.activity.SystemBarStyle
-import androidx.activity.addCallback
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
@@ -66,6 +69,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -75,11 +79,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nautesh.stopit.ui.theme.PauseTheme
 import com.nautesh.stopit.ui.theme.lobedShape
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.random.Random
@@ -125,7 +132,6 @@ class PauseActivity : ComponentActivity() {
                 goHome()
             }
         }
-        onBackPressedDispatcher.addCallback(this) { close() }
 
         // For the after-the-pause screen. Read once here; both are only shown, never updated live.
         val visits = maxOf(prefs.visitsToday(pkg), 1)
@@ -137,6 +143,9 @@ class PauseActivity : ComponentActivity() {
         setContent {
             PauseTheme(amoled = prefs.amoled) {
                 PauseScreen(
+                    window = window,
+                    // Closing a real pause goes home, so the app stays hidden behind the blur until then.
+                    closeRevealsApp = preview,
                     appName = label,
                     minSeconds = prefs.minSeconds,
                     maxSeconds = prefs.maxSeconds,
@@ -173,6 +182,8 @@ class PauseActivity : ComponentActivity() {
 @Composable
 @OptIn(ExperimentalSharedTransitionApi::class)
 private fun PauseScreen(
+    window: Window,
+    closeRevealsApp: Boolean,
     appName: String,
     minSeconds: Int,
     maxSeconds: Int,
@@ -186,6 +197,37 @@ private fun PauseScreen(
     var deciding by rememberSaveable { mutableStateOf(false) }
     val sheet = rememberEntrance()
     val colors = MaterialTheme.colorScheme
+
+    // On the way out the sheet drops; when the app behind is about to show, its blur and dim fade out too.
+    val scope = rememberCoroutineScope()
+    val blurPx = with(LocalDensity.current) { 32.dp.toPx() }
+    var leaving by remember { mutableStateOf(false) }
+    fun leave(revealApp: Boolean, then: () -> Unit) {
+        if (leaving) return
+        leaving = true
+        scope.launch {
+            coroutineScope {
+                // Accelerates off screen; a spring would crawl through its last few pixels.
+                launch { sheet.animateTo(0f, tween(250, easing = FastOutLinearInEasing)) }
+                if (revealApp) {
+                    val dim = window.attributes.dimAmount
+                    launch {
+                        animate(1f, 0f, animationSpec = tween(250)) { p, _ ->
+                            window.attributes = window.attributes.apply {
+                                blurBehindRadius = (p * blurPx).toInt()
+                                dimAmount = p * dim
+                            }
+                        }
+                    }
+                }
+            }
+            then()
+        }
+    }
+    val close = { leave(closeRevealsApp, onClose) }
+    val openFor = { minutes: Int? -> leave(true) { onOpenFor(minutes) } }
+    BackHandler(onBack = close)
+
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier
@@ -201,7 +243,7 @@ private fun PauseScreen(
         ) {
             Box(Modifier.size(32.dp, 4.dp).alpha(0.5f).background(colors.onSurfaceVariant, RoundedCornerShape(2.dp)))
             Spacer(Modifier.height(20.dp))
-            SheetContent(deciding, appName, minSeconds, maxSeconds, message, visits, minutesToday, onClose, onOpenFor) { deciding = true }
+            SheetContent(deciding, appName, minSeconds, maxSeconds, message, visits, minutesToday, close, openFor) { deciding = true }
         }
     }
 }
