@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -41,6 +42,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -62,6 +64,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -70,12 +73,20 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nautesh.stopit.ui.theme.StopItTheme
 
+/** Wider than tall: tabs switch to a side rail and screens to two panes. */
+@Composable
+fun isLandscape(): Boolean = LocalConfiguration.current.let { it.screenWidthDp > it.screenHeightDp }
+
 /**
  * Space a screen leaves at the bottom for the floating navbar: 72dp bar + 20dp inset + 8dp gap, above the
- * gesture bar. Screens draw behind the gesture bar, so this includes its height.
+ * gesture bar. Screens draw behind the gesture bar, so this includes its height. In landscape the tabs are
+ * a side rail, so only a 16dp margin is left.
  */
 val NavBarClearance: Dp
-    @Composable get() = 100.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    @Composable get() = (if (isLandscape()) 16.dp else 100.dp) + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+/** Space a screen leaves at the start for the landscape rail: 80dp rail + 16dp inset + 16dp gap. */
+val RailClearance = 112.dp
 
 private enum class Tab(val label: String, @param:DrawableRes val icon: Int) {
     Home("Home", R.drawable.ic_home),
@@ -131,8 +142,10 @@ class MainActivity : ComponentActivity() {
                         )
                         return@Box
                     }
+                    val landscape = isLandscape()
                     AnimatedContent(
                         tab,
+                        modifier = Modifier.padding(start = if (landscape) RailClearance else 0.dp),
                         // Slides a little toward the side of the tab that was picked, matching the navbar order.
                         transitionSpec = {
                             val dir = if (targetState > initialState) 1 else -1
@@ -152,7 +165,11 @@ class MainActivity : ComponentActivity() {
                             Tab.Pause -> PauseSettingsScreen(prefs) { PauseActivity.start(this@MainActivity, packageName) }
                         }
                     }
-                    NavBar(tab, onSelect = { tab = it }, Modifier.align(Alignment.BottomCenter))
+                    if (landscape) {
+                        NavRail(tab, onSelect = { tab = it })
+                    } else {
+                        NavBar(tab, onSelect = { tab = it }, Modifier.align(Alignment.BottomCenter))
+                    }
                 }
             }
         }
@@ -218,6 +235,51 @@ private fun NavBar(current: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = M
                         Icon(painterResource(tab.icon), contentDescription = null, Modifier.size(22.dp), tint = content)
                         Text(tab.label, color = content, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
                     }
+                }
+            }
+        }
+    }
+}
+
+/** Landscape tabs: a floating rail on the left, each tab an icon in a pill with its label below. */
+@Composable
+private fun NavRail(current: Tab, onSelect: (Tab) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val haptics = LocalHapticFeedback.current
+    Surface(
+        modifier = Modifier.navigationBarsPadding().padding(16.dp).width(80.dp).fillMaxHeight(),
+        shape = RoundedCornerShape(32.dp),
+        color = colors.surfaceContainer,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically),
+        ) {
+            Tab.entries.forEach { tab ->
+                val selected = tab == current
+                val content by animateColorAsState(if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant, label = "railContent")
+                val pill by animateColorAsState(if (selected) colors.primaryContainer else Color.Transparent, label = "railPill")
+                Column(
+                    Modifier
+                        .width(72.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .selectable(selected = selected, role = Role.Tab) {
+                            if (!selected) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                            onSelect(tab)
+                        }
+                        .padding(vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Box(Modifier.size(56.dp, 32.dp).background(pill, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+                        Icon(painterResource(tab.icon), contentDescription = null, Modifier.size(22.dp), tint = content)
+                    }
+                    Text(
+                        tab.label,
+                        color = content,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    )
                 }
             }
         }

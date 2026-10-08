@@ -1,5 +1,11 @@
 package com.nautesh.stopit
 
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.FlowRow
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
@@ -107,104 +113,138 @@ fun AppsScreen(prefs: Prefs) {
     val colors = MaterialTheme.colorScheme
     val haptics = LocalHapticFeedback.current
 
-    Box(Modifier.fillMaxSize()) {
-        LazyColumn(
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 32.dp, bottom = NavBarClearance + 80.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            item {
-                Column(Modifier.padding(horizontal = 8.dp)) {
-                    Text("Choose apps", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold)
-                    Text(
-                        "${appCount(count)} ${if (count == 1) "gets" else "get"} a pause before opening",
-                        color = colors.onSurfaceVariant,
-                    )
-                }
-            }
-            item {
-                TextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text("Search apps") },
-                    leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(28.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = colors.surfaceContainerLow,
-                        unfocusedContainerColor = colors.surfaceContainerLow,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                    ),
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+    val title = @Composable {
+        Column(Modifier.padding(horizontal = 8.dp)) {
+            Text("Choose apps", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold)
+            Text(
+                "${appCount(count)} ${if (count == 1) "gets" else "get"} a pause before opening",
+                color = colors.onSurfaceVariant,
+            )
+        }
+    }
+    val search = @Composable {
+        TextField(
+            value = query,
+            onValueChange = { query = it },
+            placeholder = { Text("Search apps") },
+            leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
+            singleLine = true,
+            shape = RoundedCornerShape(28.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = colors.surfaceContainerLow,
+                unfocusedContainerColor = colors.surfaceContainerLow,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+        )
+    }
+    val chips = @Composable {
+        // Wraps onto a second line in the narrow landscape pane.
+        FlowRow(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            filters.forEach { (name, category) ->
+                FilterChip(
+                    selected = filter == category,
+                    onClick = { filter = category },
+                    label = { Text(name) },
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = colors.secondaryContainer),
                 )
             }
-            item {
-                Row(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    filters.forEach { (name, category) ->
-                        FilterChip(
-                            selected = filter == category,
-                            onClick = { filter = category },
-                            label = { Text(name) },
-                            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = colors.secondaryContainer),
-                        )
+        }
+    }
+    val appRows: LazyListScope.() -> Unit = {
+        if (apps == null) {
+            item { Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) { CircularProgressIndicator() } }
+        }
+        itemsIndexed(shown, key = { _, app -> app.pkg }) { index, app ->
+            val on = app.pkg in selected
+            val shape = when {
+                shown.size == 1 -> RoundedCornerShape(24.dp)
+                index == 0 -> RoundedCornerShape(24.dp, 24.dp, 6.dp, 6.dp)
+                index == shown.lastIndex -> RoundedCornerShape(6.dp, 6.dp, 24.dp, 24.dp)
+                else -> RoundedCornerShape(6.dp)
+            }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(shape)
+                    .background(if (on) colors.surfaceContainerLow else colors.surface)
+                    .toggleable(value = on, role = Role.Switch) {
+                        haptics.toggle(it)
+                        selected = if (it) selected + app.pkg else selected - app.pkg
+                    }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Image(app.icon, contentDescription = null, Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)))
+                Column(Modifier.weight(1f)) {
+                    Text(app.label, style = MaterialTheme.typography.titleMedium)
+                    categoryName(app.category).takeIf { it.isNotEmpty() }?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                     }
                 }
-            }
-            if (apps == null) {
-                item { Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) { CircularProgressIndicator() } }
-            }
-            itemsIndexed(shown, key = { _, app -> app.pkg }) { index, app ->
-                val on = app.pkg in selected
-                val shape = when {
-                    shown.size == 1 -> RoundedCornerShape(24.dp)
-                    index == 0 -> RoundedCornerShape(24.dp, 24.dp, 6.dp, 6.dp)
-                    index == shown.lastIndex -> RoundedCornerShape(6.dp, 6.dp, 24.dp, 24.dp)
-                    else -> RoundedCornerShape(6.dp)
-                }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(shape)
-                        .background(if (on) colors.surfaceContainerLow else colors.surface)
-                        .toggleable(value = on, role = Role.Switch) {
-                            haptics.toggle(it)
-                            selected = if (it) selected + app.pkg else selected - app.pkg
-                        }
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    Image(app.icon, contentDescription = null, Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)))
-                    Column(Modifier.weight(1f)) {
-                        Text(app.label, style = MaterialTheme.typography.titleMedium)
-                        categoryName(app.category).takeIf { it.isNotEmpty() }?.let {
-                            Text(it, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
-                        }
-                    }
-                    Switch(checked = on, onCheckedChange = null)
-                }
+                Switch(checked = on, onCheckedChange = null)
             }
         }
-
-        // Always shown: light peach with unsaved changes, light green once saved.
-        val dirty = selected != saved
+    }
+    // Always shown: light peach with unsaved changes, light green once saved.
+    val dirty = selected != saved
+    val saveButton = @Composable { modifier: Modifier, shape: Shape ->
         Button(
             onClick = {
                 prefs.guarded = selected
                 saved = selected
             },
-            shape = RoundedCornerShape(28.dp, 28.dp, 8.dp, 8.dp),
+            shape = shape,
             colors = ButtonDefaults.buttonColors(
                 containerColor = animateColorAsState(if (dirty) colors.primaryContainer else LocalSemanticColors.current.walkedAway, label = "save").value,
                 contentColor = animateColorAsState(if (dirty) colors.onPrimaryContainer else LocalSemanticColors.current.onWalkedAway, label = "onSave").value,
             ),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(start = 20.dp, end = 20.dp, bottom = NavBarClearance)
-                .fillMaxWidth()
-                .height(60.dp),
+            modifier = modifier,
         ) {
             Text("${if (dirty) "Save" else "Saved"} ${appCount(count)}", fontWeight = FontWeight.Bold)
+        }
+    }
+
+    if (isLandscape()) {
+        // Two panes: title, search, filters and Save stay put on the left; the list scrolls on the right.
+        Row(
+            Modifier.padding(top = 16.dp, end = 16.dp, bottom = NavBarClearance),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Column(Modifier.width(300.dp).fillMaxHeight()) {
+                title()
+                search()
+                chips()
+                Spacer(Modifier.weight(1f))
+                saveButton(Modifier.padding(top = 8.dp).fillMaxWidth().height(56.dp), RoundedCornerShape(28.dp))
+            }
+            LazyColumn(
+                Modifier.weight(1f).clip(RoundedCornerShape(24.dp)),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+                content = appRows,
+            )
+        }
+    } else {
+        Box(Modifier.fillMaxSize()) {
+            LazyColumn(
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 32.dp, bottom = NavBarClearance + 80.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                item { title() }
+                item { search() }
+                item { chips() }
+                appRows()
+            }
+            saveButton(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 20.dp, end = 20.dp, bottom = NavBarClearance)
+                    .fillMaxWidth()
+                    .height(60.dp),
+                RoundedCornerShape(28.dp, 28.dp, 8.dp, 8.dp),
+            )
         }
     }
 }

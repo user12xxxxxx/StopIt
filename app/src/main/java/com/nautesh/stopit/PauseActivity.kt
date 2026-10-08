@@ -1,5 +1,13 @@
 package com.nautesh.stopit
 
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.BoxWithConstraints
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
@@ -228,22 +236,31 @@ private fun PauseScreen(
     val openFor = { minutes: Int? -> leave(true) { onOpenFor(minutes) } }
     BackHandler(onBack = close)
 
-    Box(Modifier.fillMaxSize()) {
+    // Landscape is short, so the sheet keeps less padding below its content and around its handle.
+    val landscape = isLandscape()
+    val bottomPadding = if (landscape) 16.dp else 30.dp
+    val handleGap = if (landscape) 12.dp else 20.dp
+    // Below the status bar, so landscape's after-the-pause screen knows how tall the sheet may grow.
+    BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding().padding(top = 4.dp)) {
+        // Sheet padding, the handle and its gap, and the gesture bar.
+        val fullHeight = maxHeight - 12.dp - bottomPadding - 4.dp - handleGap - WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
+                // Capped and centred in landscape, as a wide sheet would stretch its buttons.
+                .widthIn(max = 680.dp)
                 .fillMaxWidth()
                 .graphicsLayer { translationY = (1 - sheet.value) * size.height }
                 // Keeps the bottom covered while the spring overshoots upward.
                 .drawBehind { drawRect(colors.background, Offset(0f, size.height), size.copy(height = 80.dp.toPx())) }
                 .background(colors.background, RoundedCornerShape(28.dp, 28.dp, 0.dp, 0.dp))
                 .navigationBarsPadding()
-                .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 30.dp),
+                .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = bottomPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(Modifier.size(32.dp, 4.dp).alpha(0.5f).background(colors.onSurfaceVariant, RoundedCornerShape(2.dp)))
-            Spacer(Modifier.height(20.dp))
-            SheetContent(deciding, appName, minSeconds, maxSeconds, message, visits, minutesToday, close, openFor) { deciding = true }
+            Spacer(Modifier.height(handleGap))
+            SheetContent(deciding, fullHeight, appName, minSeconds, maxSeconds, message, visits, minutesToday, close, openFor) { deciding = true }
         }
     }
 }
@@ -252,6 +269,7 @@ private fun PauseScreen(
 @OptIn(ExperimentalSharedTransitionApi::class)
 private fun SheetContent(
     deciding: Boolean,
+    fullHeight: Dp,
     appName: String,
     minSeconds: Int,
     maxSeconds: Int,
@@ -271,7 +289,7 @@ private fun SheetContent(
             // The tapped "Open anyway" button morphs into the "Open for" button on the next screen.
             val openButton = Modifier.sharedBounds(rememberSharedContentState("open"), this@AnimatedContent)
             if (decide) {
-                DecideScreen(appName, visits, minutesToday, onClose, onOpenFor, openButton)
+                DecideScreen(fullHeight, appName, visits, minutesToday, onClose, onOpenFor, openButton)
             } else {
                 CountdownScreen(appName, minSeconds, maxSeconds, message, onClose, onOpenAnyway, openButton)
             }
@@ -334,7 +352,9 @@ private fun CountdownScreen(
     // The shape pops in just after the sheet starts rising.
     val pop = rememberEntrance(80, dampingRatio = 0.6f, stiffness = 800f)
 
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+    val headline = if (done) "Still want it?" else "Take a breath."
+    val body = if (done) "You made it through the pause. Your call now." else message
+    val badge = @Composable {
         Box(
             Modifier.size(168.dp).graphicsLayer {
                 val s = (0.6f + 0.4f * pop.value) * scale
@@ -379,9 +399,45 @@ private fun CountdownScreen(
                 )
             }
         }
+    }
+    val closeButton = @Composable { modifier: Modifier ->
+        Button(onClick = onClose, modifier = modifier) {
+            Icon(painterResource(R.drawable.ic_close), contentDescription = null, Modifier.size(22.dp))
+            Text("Close $appName", fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 10.dp))
+        }
+    }
+    val openAnyway = @Composable { modifier: Modifier ->
+        OutlinedButton(onClick = onOpenAnyway, enabled = done, modifier = modifier) {
+            Text(if (done) "Open anyway" else "Open anyway in $left s")
+        }
+    }
+
+    if (isLandscape()) {
+        // The countdown on the left; the words and both actions, side by side, on the right.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+            badge()
+            Column(Modifier.weight(1f)) {
+                Text(headline, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = colors.onBackground, modifier = Modifier.rise(0))
+                Text(
+                    body,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 16.dp).rise(1),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    closeButton(Modifier.rise(2).weight(1f).height(56.dp))
+                    openAnyway(openButton.rise(3).weight(1f).height(56.dp))
+                }
+            }
+        }
+        return
+    }
+
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        badge()
         Spacer(Modifier.height(18.dp))
         Text(
-            if (done) "Still want it?" else "Take a breath.",
+            headline,
             fontSize = 30.sp,
             fontWeight = FontWeight.ExtraBold,
             color = colors.onBackground,
@@ -389,7 +445,7 @@ private fun CountdownScreen(
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            if (done) "You made it through the pause. Your call now." else message,
+            body,
             style = MaterialTheme.typography.bodyLarge,
             color = colors.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -399,13 +455,8 @@ private fun CountdownScreen(
         )
         Spacer(Modifier.height(16.dp))
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(onClick = onClose, modifier = Modifier.rise(2).fillMaxWidth().height(64.dp)) {
-                Icon(painterResource(R.drawable.ic_close), contentDescription = null, Modifier.size(22.dp))
-                Text("Close $appName", fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 10.dp))
-            }
-            OutlinedButton(onClick = onOpenAnyway, enabled = done, modifier = openButton.rise(3).fillMaxWidth().height(56.dp)) {
-                Text(if (done) "Open anyway" else "Open anyway in $left s")
-            }
+            closeButton(Modifier.rise(2).fillMaxWidth().height(64.dp))
+            openAnyway(openButton.rise(3).fillMaxWidth().height(56.dp))
         }
     }
 }
@@ -432,6 +483,7 @@ internal fun ordinal(n: Int): String {
 
 @Composable
 private fun DecideScreen(
+    fullHeight: Dp,
     appName: String,
     visits: Int,
     minutesToday: Int,
@@ -442,12 +494,15 @@ private fun DecideScreen(
     var limit by rememberSaveable { mutableStateOf<Int?>(5) }
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
+    val landscape = isLandscape()
+    // Landscape is short, so the menu rows and the bottom button shrink a little to fit above the split button.
+    val rowHeight = if (landscape) 48.dp else 56.dp
 
-    Column(Modifier.fillMaxWidth()) {
+    val heading = @Composable { size: TextUnit ->
         Text(
             "This is your\n${ordinal(visits)} visit\ntoday.",
-            fontSize = 52.sp,
-            lineHeight = 52.sp,
+            fontSize = size,
+            lineHeight = size,
             fontWeight = FontWeight.ExtraBold,
             color = colors.onBackground,
         )
@@ -461,9 +516,9 @@ private fun DecideScreen(
             color = colors.onSurfaceVariant,
             modifier = Modifier.padding(top = 14.dp),
         )
-
-        // The time menu stacks up into this space above the split button: room for three 56 dp rows.
-        Box(Modifier.height(188.dp).fillMaxWidth()) {
+    }
+    val menu = @Composable { modifier: Modifier ->
+        Box(modifier.fillMaxWidth()) {
             // Qualified: inside the Column, the ColumnScope overload would otherwise be picked.
             androidx.compose.animation.AnimatedVisibility(menuOpen, Modifier.align(Alignment.BottomEnd), enter = EnterTransition.None, exit = ExitTransition.None) {
                 Column(
@@ -495,7 +550,7 @@ private fun DecideScreen(
                             contentColor = colors.onPrimaryContainer,
                         ) {
                             Row(
-                                Modifier.height(56.dp).padding(start = 18.dp, end = 22.dp),
+                                Modifier.height(rowHeight).padding(start = 18.dp, end = 22.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
@@ -508,7 +563,8 @@ private fun DecideScreen(
                 }
             }
         }
-
+    }
+    val actions = @Composable {
         // Split button: the leading half opens the app, the trailing half picks how long.
         Row(Modifier.fillMaxWidth().height(56.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             Surface(
@@ -540,9 +596,28 @@ private fun DecideScreen(
             }
         }
 
-        Button(onClick = onClose, modifier = Modifier.padding(top = 10.dp).fillMaxWidth().height(64.dp)) {
+        Button(onClick = onClose, modifier = Modifier.padding(top = 10.dp).fillMaxWidth().height(if (landscape) 56.dp else 64.dp)) {
             Icon(painterResource(R.drawable.ic_check), contentDescription = null, Modifier.size(22.dp))
             Text("Not now, I'm good", fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 10.dp))
+        }
+    }
+
+    if (landscape) {
+        // The sheet grows to the full height: the message on the left, the menu, split button and "Not now" on the right.
+        Row(Modifier.fillMaxWidth().height(fullHeight), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+            Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.Bottom) { heading(46.sp) }
+            Column(Modifier.width(290.dp).fillMaxHeight()) {
+                // The time menu stacks up into whatever space is left above the split button.
+                menu(Modifier.weight(1f))
+                actions()
+            }
+        }
+    } else {
+        Column(Modifier.fillMaxWidth()) {
+            heading(52.sp)
+            // The time menu stacks up into this space above the split button: room for three 56 dp rows.
+            menu(Modifier.height(188.dp))
+            actions()
         }
     }
 }

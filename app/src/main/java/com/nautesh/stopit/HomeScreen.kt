@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -76,12 +77,7 @@ fun HomeScreen(prefs: Prefs, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
         while (guarding) spin.animateTo(spin.value + 360f, tween(40_000, easing = LinearEasing))
     }
 
-    Column(
-        Modifier
-            .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 28.dp, bottom = NavBarClearance + 20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
+    val header = @Composable {
         Row(Modifier.padding(start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "StopIt",
@@ -99,7 +95,9 @@ fun HomeScreen(prefs: Prefs, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
                 Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings", tint = colors.onSurfaceVariant)
             }
         }
+    }
 
+    val guardCard = @Composable {
         Surface(
             color = cardColor,
             contentColor = onCard,
@@ -115,7 +113,8 @@ fun HomeScreen(prefs: Prefs, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
                         // Faint and tonal when off; a solid accent when on.
                         .background(lerp(onCard.copy(alpha = 0.06f), colors.tertiaryContainer, on), lobedShape(lobes = 12, depth = 0.06f)),
                 )
-                Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(28.dp)) {
+                // Tighter in landscape so today's counts fit below the card.
+                Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(if (isLandscape()) 12.dp else 28.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             if (guarding) "Guard is on" else "Guard is off",
@@ -166,7 +165,9 @@ fun HomeScreen(prefs: Prefs, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
                 }
             }
         }
+    }
 
+    val stats = @Composable {
         Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             // Light tints of the chart's line colours: green is the good outcome, red the one to bring down.
             StatCard(
@@ -184,8 +185,41 @@ fun HomeScreen(prefs: Prefs, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
         }
+    }
 
-        TrendCard(prefs.history)
+    if (isLandscape()) {
+        // Two panes: the guard and today's counts on the left, the title and the trend on the right.
+        Row(
+            Modifier.padding(top = 16.dp, end = 16.dp, bottom = NavBarClearance),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Column(
+                Modifier.width(340.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                guardCard()
+                stats()
+            }
+            Column(
+                Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                header()
+                TrendCard(prefs.history)
+            }
+        }
+    } else {
+        Column(
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, top = 28.dp, bottom = NavBarClearance + 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            header()
+            guardCard()
+            stats()
+            TrendCard(prefs.history)
+        }
     }
 }
 
@@ -197,9 +231,12 @@ private fun StatCard(value: Int, label: String, color: Color, contentColor: Colo
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 8.dp, bottomStart = 28.dp, bottomEnd = 28.dp),
         modifier = modifier,
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
-            Text("${rollUp(value)}", fontSize = 40.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold)
-            Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+        // Smaller in landscape so both cards fit under the guard card.
+        val landscape = isLandscape()
+        Column(Modifier.padding(horizontal = 18.dp, vertical = if (landscape) 10.dp else 16.dp)) {
+            val size = if (landscape) 32.sp else 40.sp
+            Text("${rollUp(value)}", fontSize = size, lineHeight = size, fontWeight = FontWeight.ExtraBold)
+            Text(label, style = if (landscape) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
         }
     }
 }
