@@ -203,16 +203,17 @@ fun PauseSettingsScreen(prefs: Prefs, onPreview: () -> Unit) {
     if (landscape) {
         // Two panes: the range and Preview stay put on the left; the settings scroll on the right.
         Row(
-            Modifier.padding(top = 16.dp, end = 16.dp, bottom = NavBarClearance),
+            // No bottom padding here: the scrolling panes run under the gesture bar, which floats over them.
+            Modifier.padding(top = 16.dp, end = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(Modifier.width(340.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.width(340.dp).fillMaxHeight().padding(bottom = NavBarClearance), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 title()
                 rangeCard()
                 Spacer(Modifier.weight(1f))
                 previewButton(Modifier.fillMaxWidth().height(56.dp), RoundedCornerShape(28.dp))
             }
-            Column(Modifier.weight(1f).clip(RoundedCornerShape(24.dp)).verticalScroll(rememberScrollState())) {
+            Column(Modifier.weight(1f).clip(RoundedCornerShape(24.dp, 24.dp, 0.dp, 0.dp)).verticalScroll(rememberScrollState()).padding(bottom = NavBarClearance)) {
                 settings()
             }
         }

@@ -216,10 +216,11 @@ fun AppsScreen(prefs: Prefs) {
     if (isLandscape()) {
         // Two panes: title, search, filters and Save stay put on the left; the list scrolls on the right.
         Row(
-            Modifier.padding(top = 16.dp, end = 16.dp, bottom = NavBarClearance),
+            // No bottom padding here: the scrolling panes run under the gesture bar, which floats over them.
+            Modifier.padding(top = 16.dp, end = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(Modifier.width(300.dp).fillMaxHeight()) {
+            Column(Modifier.width(300.dp).fillMaxHeight().padding(bottom = NavBarClearance)) {
                 title()
                 search()
                 chips()
@@ -227,7 +228,8 @@ fun AppsScreen(prefs: Prefs) {
                 saveButton(Modifier.padding(top = 8.dp).fillMaxWidth().height(56.dp), RoundedCornerShape(28.dp))
             }
             LazyColumn(
-                Modifier.weight(1f).clip(RoundedCornerShape(24.dp)),
+                Modifier.weight(1f).clip(RoundedCornerShape(24.dp, 24.dp, 0.dp, 0.dp)),
+                contentPadding = PaddingValues(bottom = NavBarClearance),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
                 content = appRows,
             )

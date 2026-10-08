@@ -193,18 +193,19 @@ fun HomeScreen(prefs: Prefs, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
     if (isLandscape()) {
         // Two panes: the guard and today's counts on the left, the title and the trend on the right.
         Row(
-            Modifier.padding(top = 16.dp, end = 16.dp, bottom = NavBarClearance),
+            // No bottom padding here: the scrolling panes run under the gesture bar, which floats over them.
+            Modifier.padding(top = 16.dp, end = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Column(
-                Modifier.width(340.dp).verticalScroll(rememberScrollState()),
+                Modifier.width(340.dp).verticalScroll(rememberScrollState()).padding(bottom = NavBarClearance),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 guardCard()
                 stats()
             }
             Column(
-                Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(bottom = NavBarClearance),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 header()
