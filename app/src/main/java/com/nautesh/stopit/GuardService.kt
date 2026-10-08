@@ -76,7 +76,7 @@ class GuardService : Service() {
         nm.createNotificationChannel(NotificationChannel(CHANNEL, "Guard", NotificationManager.IMPORTANCE_MIN))
         val notification = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
-            .setContentTitle("stopIt is guarding your apps")
+            .setContentTitle("StopIt is guarding your apps")
             .setOngoing(true)
             .build()
         val type = if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0

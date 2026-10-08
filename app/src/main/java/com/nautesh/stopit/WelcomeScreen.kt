@@ -59,7 +59,7 @@ fun WelcomeScreen(usageGranted: Boolean, overlayGranted: Boolean, onGrantUsage: 
     }
     val details = @Composable { modifier: Modifier ->
         Text(
-            "stopIt shows a short, random pause screen before the apps you pick. " +
+            "StopIt shows a short, random pause screen before the apps you pick. " +
                 "Just enough time to ask: do I really want this?",
             style = MaterialTheme.typography.bodyLarge,
             color = colors.onSurfaceVariant,
