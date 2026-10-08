@@ -1,7 +1,7 @@
 <resources>
     <style name="Theme.StopIt" parent="android:Theme.Material.Light.NoActionBar" />
 
-    <!-- The pause sheet slides up over the guarded app, so its window is see-through, blurs the app behind it
+    <!-- The pause sheet slides up over the guarded app, so its window is see-through, blurs and dims the app behind it
          from the first frame, and has no window animation of its own. -->
     <style name="Theme.StopIt.Pause">
         <item name="android:windowIsTranslucent">true</item>
@@ -9,5 +9,7 @@
         <item name="android:windowAnimationStyle">@null</item>
         <item name="android:windowBlurBehindEnabled">true</item>
         <item name="android:windowBlurBehindRadius">32dp</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.2</item>
     </style>
 </resources>

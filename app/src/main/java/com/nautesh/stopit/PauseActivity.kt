@@ -1,6 +1,5 @@
 package com.nautesh.stopit
 
-import android.app.Activity
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
@@ -33,7 +32,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -68,7 +66,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -109,6 +106,9 @@ class PauseActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
+        // The window theme blurs the app behind and adds a thin dim, both from the first frame; the dim keeps the white
+        // status bar icons readable over light apps. With blur off (battery saver, some devices), the dim alone is stronger.
+        if (!windowManager.isCrossWindowBlurEnabled) window.setDimAmount(0.6f)
         val pkg = intent.getStringExtra(EXTRA_PACKAGE) ?: return finish()
         val label = runCatching {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
@@ -186,14 +186,7 @@ private fun PauseScreen(
     var deciding by rememberSaveable { mutableStateOf(false) }
     val sheet = rememberEntrance()
     val colors = MaterialTheme.colorScheme
-    // The app behind is blurred under a thin dim that keeps the white status bar icons readable over light apps.
-    // Both the blur (set in the window theme) and the dim are there from the first frame.
-    // When the system has blur off (battery saver, some devices), the dim alone is stronger.
-    val activity = LocalContext.current as Activity
-    val blur = remember { activity.windowManager.isCrossWindowBlurEnabled }
     Box(Modifier.fillMaxSize()) {
-        val dim = if (blur) 0.2f else 0.6f
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dim)))
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
