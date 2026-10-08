@@ -1,18 +1,23 @@
-*.iml
-.gradle/
-/local.properties
-/.idea/
-.DS_Store
-/build/
-/app/build/
-/captures/
-.externalNativeBuild/
-.cxx/
-.kotlin/
-/dist/
-.claude/
-CLAUDE.md
+# Allowlist: everything at the top level is ignored except what the build and the repo need.
+# Add a path here (with !) before committing a new top-level file or folder.
+/*
+!/.gitignore
+!/LICENSE
+!/README.md
+!/licenses/
+!/build.gradle.kts
+!/settings.gradle.kts
+!/gradle.properties
+!/gradle/
+!/gradlew
+!/gradlew.bat
 
-# Screenshots and screen recordings dropped into the project folder
-/Screenshot_*
-/Screen_recording_*
+# The app module: its build file and sources only.
+!/app/
+/app/*
+!/app/build.gradle.kts
+!/app/src/
+
+# Never committed, even inside allowed folders.
+.DS_Store
+*.iml
