@@ -1,9 +1,11 @@
 package com.nautesh.stopit
 
+import android.app.Activity
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
@@ -67,6 +69,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -107,6 +112,8 @@ class PauseActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
+        // Blurs whatever is behind the window; the radius is animated in PauseScreen.
+        window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
         val pkg = intent.getStringExtra(EXTRA_PACKAGE) ?: return finish()
         val label = runCatching {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
@@ -185,8 +192,19 @@ private fun PauseScreen(
     val scrim = rememberEntrance(dampingRatio = 1f, stiffness = 1600f)
     val sheet = rememberEntrance()
     val colors = MaterialTheme.colorScheme
+    // The app behind is blurred; when the system has blur off (battery saver, some devices), it is dimmed instead.
+    val activity = LocalContext.current as Activity
+    val blur = remember { activity.windowManager.isCrossWindowBlurEnabled }
+    val blurPx = with(LocalDensity.current) { 32.dp.toPx() }
+    if (blur) {
+        LaunchedEffect(Unit) {
+            snapshotFlow { scrim.value }.collect { p ->
+                activity.window.attributes = activity.window.attributes.apply { blurBehindRadius = (p * blurPx).toInt() }
+            }
+        }
+    }
     Box(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxSize().graphicsLayer { alpha = 0.6f * scrim.value }.background(Color.Black))
+        if (!blur) Box(Modifier.fillMaxSize().graphicsLayer { alpha = 0.6f * scrim.value }.background(Color.Black))
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
