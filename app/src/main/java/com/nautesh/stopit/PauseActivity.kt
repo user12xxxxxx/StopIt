@@ -192,7 +192,8 @@ private fun PauseScreen(
     val scrim = rememberEntrance(dampingRatio = 1f, stiffness = 1600f)
     val sheet = rememberEntrance()
     val colors = MaterialTheme.colorScheme
-    // The app behind is blurred; when the system has blur off (battery saver, some devices), it is dimmed instead.
+    // The app behind is blurred under a thin dim that keeps the white status bar icons readable over light apps.
+    // When the system has blur off (battery saver, some devices), the dim alone is stronger.
     val activity = LocalContext.current as Activity
     val blur = remember { activity.windowManager.isCrossWindowBlurEnabled }
     val blurPx = with(LocalDensity.current) { 32.dp.toPx() }
@@ -204,7 +205,8 @@ private fun PauseScreen(
         }
     }
     Box(Modifier.fillMaxSize()) {
-        if (!blur) Box(Modifier.fillMaxSize().graphicsLayer { alpha = 0.6f * scrim.value }.background(Color.Black))
+        val dim = if (blur) 0.2f else 0.6f
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = dim * scrim.value }.background(Color.Black))
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
