@@ -60,6 +60,7 @@ import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.nautesh.stopit.ui.theme.LocalSemanticColors
+import com.nautesh.stopit.ui.theme.LocalAppColors
 
 private class InstalledApp(val pkg: String, val label: String, val icon: ImageBitmap, val category: Int)
 
@@ -111,6 +112,7 @@ fun AppsScreen(prefs: Prefs) {
         (filter == null || it.category == filter) && it.label.contains(query.trim(), ignoreCase = true)
     }
     val colors = MaterialTheme.colorScheme
+    val app = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
 
     val title = @Composable {
@@ -131,8 +133,8 @@ fun AppsScreen(prefs: Prefs) {
             singleLine = true,
             shape = RoundedCornerShape(28.dp),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = colors.surfaceContainerLow,
-                unfocusedContainerColor = colors.surfaceContainerLow,
+                focusedContainerColor = app.field,
+                unfocusedContainerColor = app.field,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
             ),
@@ -147,7 +149,11 @@ fun AppsScreen(prefs: Prefs) {
                     selected = filter == category,
                     onClick = { filter = category },
                     label = { Text(name) },
-                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = colors.secondaryContainer),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = app.toggleOn,
+                        selectedLabelColor = app.toggleOnText,
+                        selectedLeadingIconColor = app.toggleOnText,
+                    ),
                 )
             }
         }
@@ -156,8 +162,8 @@ fun AppsScreen(prefs: Prefs) {
         if (apps == null) {
             item { Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) { CircularProgressIndicator() } }
         }
-        itemsIndexed(shown, key = { _, app -> app.pkg }) { index, app ->
-            val on = app.pkg in selected
+        itemsIndexed(shown, key = { _, entry -> entry.pkg }) { index, entry ->
+            val on = entry.pkg in selected
             val shape = when {
                 shown.size == 1 -> RoundedCornerShape(24.dp)
                 index == 0 -> RoundedCornerShape(24.dp, 24.dp, 6.dp, 6.dp)
@@ -168,19 +174,19 @@ fun AppsScreen(prefs: Prefs) {
                 Modifier
                     .fillMaxWidth()
                     .clip(shape)
-                    .background(if (on) colors.surfaceContainerLow else colors.surface)
+                    .background(app.row)
                     .toggleable(value = on, role = Role.Switch) {
                         haptics.toggle(it)
-                        selected = if (it) selected + app.pkg else selected - app.pkg
+                        selected = if (it) selected + entry.pkg else selected - entry.pkg
                     }
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Image(app.icon, contentDescription = null, Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)))
+                Image(entry.icon, contentDescription = null, Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)))
                 Column(Modifier.weight(1f)) {
-                    Text(app.label, style = MaterialTheme.typography.titleMedium)
-                    categoryName(app.category).takeIf { it.isNotEmpty() }?.let {
+                    Text(entry.label, style = MaterialTheme.typography.titleMedium, color = app.rowText)
+                    categoryName(entry.category).takeIf { it.isNotEmpty() }?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                     }
                 }
@@ -198,8 +204,8 @@ fun AppsScreen(prefs: Prefs) {
             },
             shape = shape,
             colors = ButtonDefaults.buttonColors(
-                containerColor = animateColorAsState(if (dirty) colors.primaryContainer else LocalSemanticColors.current.walkedAway, label = "save").value,
-                contentColor = animateColorAsState(if (dirty) colors.onPrimaryContainer else LocalSemanticColors.current.onWalkedAway, label = "onSave").value,
+                containerColor = animateColorAsState(if (dirty) app.fab else LocalSemanticColors.current.walkedAway, label = "save").value,
+                contentColor = animateColorAsState(if (dirty) app.fabIcon else LocalSemanticColors.current.onWalkedAway, label = "onSave").value,
             ),
             modifier = modifier,
         ) {

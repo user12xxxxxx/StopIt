@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
+import com.nautesh.stopit.ui.theme.LocalAppColors
 
 @Composable
 fun PauseSettingsScreen(prefs: Prefs, onPreview: () -> Unit) {
@@ -57,6 +58,7 @@ fun PauseSettingsScreen(prefs: Prefs, onPreview: () -> Unit) {
     val min = range.start.roundToInt()
     val max = range.endInclusive.roundToInt()
     val colors = MaterialTheme.colorScheme
+    val app = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
     val landscape = isLandscape()
 
@@ -71,14 +73,14 @@ fun PauseSettingsScreen(prefs: Prefs, onPreview: () -> Unit) {
     }
 
     val rangeCard = @Composable {
-        Surface(color = colors.tertiaryContainer, shape = RoundedCornerShape(36.dp)) {
+        Surface(color = app.cardOn, shape = RoundedCornerShape(36.dp)) {
             // Tighter in landscape, where the left pane has little height.
             Column(Modifier.padding(if (landscape) 16.dp else 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     "$min–$max sec",
                     style = if (landscape) MaterialTheme.typography.displaySmall else MaterialTheme.typography.displayMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    color = colors.onTertiaryContainer,
+                    color = app.cardOnText,
                 )
                 RangeSlider(
                     value = range,
@@ -96,17 +98,17 @@ fun PauseSettingsScreen(prefs: Prefs, onPreview: () -> Unit) {
                     valueRange = 1f..30f,
                     steps = 28,
                     colors = SliderDefaults.colors(
-                        thumbColor = colors.onTertiaryContainer,
-                        activeTrackColor = colors.onTertiaryContainer,
-                        inactiveTrackColor = colors.onTertiaryContainer.copy(alpha = 0.24f),
+                        thumbColor = app.cardOnText,
+                        activeTrackColor = app.cardOnText,
+                        inactiveTrackColor = app.cardOnText.copy(alpha = 0.24f),
                         activeTickColor = Color.Transparent,
                         inactiveTickColor = Color.Transparent,
                     ),
                     modifier = Modifier.padding(top = if (landscape) 8.dp else 16.dp),
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("1 s", style = MaterialTheme.typography.labelMedium, color = colors.onTertiaryContainer)
-                    Text("30 s", style = MaterialTheme.typography.labelMedium, color = colors.onTertiaryContainer)
+                    Text("1 s", style = MaterialTheme.typography.labelMedium, color = app.cardOnText)
+                    Text("30 s", style = MaterialTheme.typography.labelMedium, color = app.cardOnText)
                 }
             }
         }
@@ -119,7 +121,7 @@ fun PauseSettingsScreen(prefs: Prefs, onPreview: () -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(24.dp, 24.dp, 6.dp, 6.dp))
-                    .background(colors.surfaceContainerLow)
+                    .background(app.row)
                     .padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -142,7 +144,7 @@ fun PauseSettingsScreen(prefs: Prefs, onPreview: () -> Unit) {
                         decorationBox = { field ->
                             Box(
                                 Modifier
-                                    .background(colors.surface, RoundedCornerShape(12.dp))
+                                    .background(colors.surfaceContainerHighest, RoundedCornerShape(12.dp))
                                     .height(40.dp)
                                     .padding(horizontal = 12.dp),
                                 contentAlignment = Alignment.CenterStart,
@@ -161,7 +163,7 @@ fun PauseSettingsScreen(prefs: Prefs, onPreview: () -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(6.dp))
-                    .background(colors.surfaceContainerLow)
+                    .background(app.row)
                     .toggleable(value = amoled, role = Role.Switch) {
                         haptics.toggle(it)
                         amoled = it
@@ -191,8 +193,8 @@ fun PauseSettingsScreen(prefs: Prefs, onPreview: () -> Unit) {
             onClick = onPreview,
             shape = shape,
             colors = ButtonDefaults.buttonColors(
-                containerColor = colors.tertiaryContainer,
-                contentColor = colors.onTertiaryContainer,
+                containerColor = app.fab,
+                contentColor = app.fabIcon,
             ),
             modifier = modifier,
         ) { Text("Preview pause screen", fontWeight = FontWeight.Bold) }
@@ -242,11 +244,12 @@ fun PauseSettingsScreen(prefs: Prefs, onPreview: () -> Unit) {
 @Composable
 private fun WipRow(title: String, detail: String, shape: Shape, tag: String) {
     val colors = MaterialTheme.colorScheme
+    val app = LocalAppColors.current
     Row(
         Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(colors.surfaceContainerLow)
+            .background(app.row)
             .alpha(0.55f)
             .padding(start = 18.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,

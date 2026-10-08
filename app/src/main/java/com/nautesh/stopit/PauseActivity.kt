@@ -15,6 +15,7 @@ import android.os.Bundle
 import android.view.Window
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -98,6 +99,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.random.Random
+import com.nautesh.stopit.ui.theme.LocalAppColors
 
 /** The pause shown before a guarded app: a bottom sheet over the dimmed app (the window is translucent). */
 class PauseActivity : ComponentActivity() {
@@ -205,6 +207,7 @@ private fun PauseScreen(
     var deciding by rememberSaveable { mutableStateOf(false) }
     val sheet = rememberEntrance()
     val colors = MaterialTheme.colorScheme
+    val app = LocalAppColors.current
 
     // On the way out the sheet drops; when the app behind is about to show, its blur and dim fade out too.
     val scope = rememberCoroutineScope()
@@ -252,8 +255,8 @@ private fun PauseScreen(
                 .fillMaxWidth()
                 .graphicsLayer { translationY = (1 - sheet.value) * size.height }
                 // Keeps the bottom covered while the spring overshoots upward.
-                .drawBehind { drawRect(colors.background, Offset(0f, size.height), size.copy(height = 80.dp.toPx())) }
-                .background(colors.background, RoundedCornerShape(28.dp, 28.dp, 0.dp, 0.dp))
+                .drawBehind { drawRect(app.sheet, Offset(0f, size.height), size.copy(height = 80.dp.toPx())) }
+                .background(app.sheet, RoundedCornerShape(28.dp, 28.dp, 0.dp, 0.dp))
                 .navigationBarsPadding()
                 .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = bottomPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -338,6 +341,7 @@ private fun CountdownScreen(
     }
     val done = left == 0
     val colors = MaterialTheme.colorScheme
+    val app = LocalAppColors.current
 
     // The scalloped shape breathes (4 s in, 4 s out) and slowly turns; the breathing settles when the pause ends.
     val motion = rememberInfiniteTransition(label = "pause")
@@ -365,7 +369,7 @@ private fun CountdownScreen(
             contentAlignment = Alignment.Center,
         ) {
             // Only the shape turns; the count stays upright on top of it.
-            Box(Modifier.matchParentSize().rotate(spin).background(colors.primaryContainer, lobedShape(lobes = 9, depth = 0.08f)))
+            Box(Modifier.matchParentSize().rotate(spin).background(app.running, lobedShape(lobes = 9, depth = 0.08f)))
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 AnimatedContent(
                     left,
@@ -386,16 +390,16 @@ private fun CountdownScreen(
                             painterResource(R.drawable.ic_check),
                             contentDescription = null,
                             Modifier.size(68.dp),
-                            tint = colors.onPrimaryContainer,
+                            tint = app.runningText,
                         )
                     } else {
-                        Text("$n", fontSize = 68.sp, fontWeight = FontWeight.ExtraBold, color = colors.onPrimaryContainer)
+                        Text("$n", fontSize = 68.sp, fontWeight = FontWeight.ExtraBold, color = app.runningText)
                     }
                 }
                 Text(
                     if (done) "PAUSE DONE" else "SECONDS",
                     style = MaterialTheme.typography.labelLarge,
-                    color = colors.onPrimaryContainer,
+                    color = app.runningText,
                 )
             }
         }
@@ -417,7 +421,7 @@ private fun CountdownScreen(
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(32.dp)) {
             badge()
             Column(Modifier.weight(1f)) {
-                Text(headline, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = colors.onBackground, modifier = Modifier.rise(0))
+                Text(headline, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = app.sheetText, modifier = Modifier.rise(0))
                 Text(
                     body,
                     style = MaterialTheme.typography.bodyLarge,
@@ -440,7 +444,7 @@ private fun CountdownScreen(
             headline,
             fontSize = 30.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = colors.onBackground,
+            color = app.sheetText,
             modifier = Modifier.rise(0),
         )
         Spacer(Modifier.height(6.dp))
@@ -494,6 +498,7 @@ private fun DecideScreen(
     var limit by rememberSaveable { mutableStateOf<Int?>(5) }
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
+    val app = LocalAppColors.current
     val landscape = isLandscape()
     // Landscape is short, so the menu rows and the bottom button shrink a little to fit above the split button.
     val rowHeight = if (landscape) 48.dp else 56.dp
@@ -504,7 +509,7 @@ private fun DecideScreen(
             fontSize = size,
             lineHeight = size,
             fontWeight = FontWeight.ExtraBold,
-            color = colors.onBackground,
+            color = app.sheetText,
         )
         Text(
             if (minutesToday > 0) {
@@ -546,8 +551,8 @@ private fun DecideScreen(
                                 menuOpen = false
                             },
                             shape = RoundedCornerShape(28.dp),
-                            color = colors.primaryContainer,
-                            contentColor = colors.onPrimaryContainer,
+                            color = app.fab,
+                            contentColor = app.fabIcon,
                         ) {
                             Row(
                                 Modifier.height(rowHeight).padding(start = 18.dp, end = 22.dp),
@@ -570,8 +575,8 @@ private fun DecideScreen(
             Surface(
                 onClick = { onOpenFor(limit) },
                 shape = RoundedCornerShape(28.dp, 8.dp, 8.dp, 28.dp),
-                color = colors.secondaryContainer,
-                contentColor = colors.onSecondaryContainer,
+                color = app.field,
+                contentColor = colors.onSurface,
                 modifier = openButton.weight(1f).fillMaxHeight(),
             ) {
                 Box(contentAlignment = Alignment.Center) { Text("Open for", fontWeight = FontWeight.Bold) }
@@ -581,8 +586,9 @@ private fun DecideScreen(
                 onClick = { menuOpen = !menuOpen },
                 // Rounds fully into a FAB while its menu is open.
                 shape = animateDpAsState(if (menuOpen) 28.dp else 8.dp, label = "fab").value.let { RoundedCornerShape(it, 28.dp, 28.dp, it) },
-                color = colors.tertiary,
-                contentColor = colors.onTertiary,
+                // The menu trigger, like a + button: accent while closed, primary while its menu is open.
+                color = animateColorAsState(if (menuOpen) app.fabOpen else app.fab, label = "trigger").value,
+                contentColor = animateColorAsState(if (menuOpen) app.fabOpenIcon else app.fabIcon, label = "triggerIcon").value,
                 modifier = Modifier.width(140.dp).fillMaxHeight().semantics { contentDescription = "Visit limit" },
             ) {
                 Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {

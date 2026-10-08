@@ -32,21 +32,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nautesh.stopit.ui.theme.lobedShape
 import com.nautesh.stopit.ui.theme.LocalSemanticColors
+import com.nautesh.stopit.ui.theme.LocalAppColors
 
 /** Shown instead of the tabs until both special permissions are granted. */
 @Composable
 fun WelcomeScreen(usageGranted: Boolean, overlayGranted: Boolean, onGrantUsage: () -> Unit, onGrantOverlay: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val app = LocalAppColors.current
     val landscape = isLandscape()
     val hero = @Composable { modifier: Modifier ->
         Box(
             modifier
                 .size(if (landscape) 150.dp else 200.dp)
                 // Same pale tone as the permission rows below it.
-                .background(colors.surfaceContainerHigh, lobedShape(lobes = 4, depth = 0.14f)),
+                .background(app.cardOff, lobedShape(lobes = 4, depth = 0.14f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(painterResource(R.drawable.ic_hand), contentDescription = null, Modifier.size(if (landscape) 64.dp else 84.dp), tint = colors.primary)
+            Icon(painterResource(R.drawable.ic_hand), contentDescription = null, Modifier.size(if (landscape) 64.dp else 84.dp), tint = app.screenAccent)
         }
         Text(
             "Pause before\nyou scroll.",
@@ -122,20 +124,21 @@ private fun PermissionCard(
     onGrant: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val app = LocalAppColors.current
     Row(
         Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(colors.surfaceContainerHigh)
+            .background(app.row)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Box(
-            Modifier.size(44.dp).background(colors.tertiaryContainer, CircleShape),
+            Modifier.size(44.dp).background(app.cardMark, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(painterResource(icon), contentDescription = null, Modifier.size(22.dp), tint = colors.onTertiaryContainer)
+            Icon(painterResource(icon), contentDescription = null, Modifier.size(22.dp), tint = colors.onSurface)
         }
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -147,10 +150,7 @@ private fun PermissionCard(
                 Text("Done", color = LocalSemanticColors.current.done, fontWeight = FontWeight.Bold)
             }
         } else {
-            Button(
-                onClick = onGrant,
-                colors = ButtonDefaults.buttonColors(containerColor = colors.tertiary, contentColor = colors.onTertiary),
-            ) { Text("Allow") }
+            Button(onClick = onGrant) { Text("Allow") }
         }
     }
 }

@@ -72,6 +72,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nautesh.stopit.ui.theme.StopItTheme
+import com.nautesh.stopit.ui.theme.LocalAppColors
 
 /** Wider than tall: tabs switch to a side rail and screens to two panes. */
 @Composable
@@ -127,7 +128,7 @@ class MainActivity : ComponentActivity() {
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
+                        .background(LocalAppColors.current.screen)
                         // Not the bottom: lists scroll on behind the gesture bar.
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
                 ) {
@@ -196,13 +197,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun NavBar(current: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
+    val app = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
     // Home has no floating action above the bar, so it is fully round; other tabs flatten the top to meet theirs.
     val topCorner by animateDpAsState(if (current == Tab.Home) 32.dp else 8.dp, label = "navTop")
     Surface(
         modifier = modifier.navigationBarsPadding().padding(20.dp).fillMaxWidth().height(72.dp),
         shape = RoundedCornerShape(topCorner, topCorner, 32.dp, 32.dp),
-        color = colors.surfaceContainer,
+        color = app.nav,
     ) {
         BoxWithConstraints(Modifier.padding(horizontal = 8.dp), contentAlignment = Alignment.CenterStart) {
             // One pill that slides to the selected tab, behind the tab row.
@@ -212,12 +214,12 @@ private fun NavBar(current: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = M
                 Modifier
                     .offset(x = pillX + 4.dp)
                     .size(slot - 8.dp, 48.dp)
-                    .background(colors.primaryContainer, RoundedCornerShape(24.dp)),
+                    .background(app.navActive, RoundedCornerShape(24.dp)),
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Tab.entries.forEach { tab ->
                     val selected = tab == current
-                    val content by animateColorAsState(if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant, label = "tabContent")
+                    val content by animateColorAsState(if (selected) app.navActiveIcon else app.navText, label = "tabContent")
                     Row(
                         Modifier
                             .weight(1f)
@@ -245,11 +247,12 @@ private fun NavBar(current: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = M
 @Composable
 private fun NavRail(current: Tab, onSelect: (Tab) -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val app = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
     Surface(
         modifier = Modifier.navigationBarsPadding().padding(16.dp).width(80.dp).fillMaxHeight(),
         shape = RoundedCornerShape(32.dp),
-        color = colors.surfaceContainer,
+        color = app.nav,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -257,8 +260,8 @@ private fun NavRail(current: Tab, onSelect: (Tab) -> Unit) {
         ) {
             Tab.entries.forEach { tab ->
                 val selected = tab == current
-                val content by animateColorAsState(if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant, label = "railContent")
-                val pill by animateColorAsState(if (selected) colors.primaryContainer else Color.Transparent, label = "railPill")
+                val content by animateColorAsState(if (selected) app.navActiveIcon else app.navText, label = "railContent")
+                val pill by animateColorAsState(if (selected) app.navActive else Color.Transparent, label = "railPill")
                 Column(
                     Modifier
                         .width(72.dp)

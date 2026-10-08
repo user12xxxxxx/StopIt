@@ -51,6 +51,7 @@ import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
 import com.nautesh.stopit.ui.theme.LocalSemanticColors
+import com.nautesh.stopit.ui.theme.LocalAppColors
 
 /** Home's trend chart: walked away (green) and opened anyway (red) over the last week or four weeks. */
 @Composable
@@ -64,9 +65,10 @@ fun TrendCard(history: Map<LocalDate, DayCount>) {
     }
     var picked by rememberSaveable(monthly) { mutableStateOf(points.lastIndex) }
     val colors = MaterialTheme.colorScheme
+    val app = LocalAppColors.current
     val semantic = LocalSemanticColors.current
 
-    Surface(color = colors.surfaceContainerLow, shape = RoundedCornerShape(28.dp)) {
+    Surface(color = app.cardOff, shape = RoundedCornerShape(28.dp)) {
         Column(Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -117,7 +119,7 @@ fun TrendCard(history: Map<LocalDate, DayCount>) {
                         val i0 = f.toInt()
                         val i1 = minOf(i0 + 1, points.lastIndex)
                         val m = lerp(at(i0, value(points[i0].second)), at(i1, value(points[i1].second)), f - i0)
-                        drawCircle(colors.surfaceContainerLow, 7.dp.toPx(), m)
+                        drawCircle(app.cardOff, 7.dp.toPx(), m)
                         drawCircle(color, 5.dp.toPx(), m)
                     }
                 }
@@ -159,13 +161,14 @@ private fun Swatch(color: Color) {
 @Composable
 private fun RangeButton(label: String, selected: Boolean, shape: RoundedCornerShape, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val app = LocalAppColors.current
     Box(
         modifier
             .height(32.dp)
             .clip(shape)
-            .background(animateColorAsState(if (selected) colors.primaryContainer else colors.surfaceContainerHigh, label = "range").value)
+            .background(animateColorAsState(if (selected) app.toggleOn else app.cardOffBadge, label = "range").value)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
-    ) { Text(label, style = MaterialTheme.typography.labelLarge, color = animateColorAsState(if (selected) colors.onPrimaryContainer else colors.onSurface, label = "rangeText").value) }
+    ) { Text(label, style = MaterialTheme.typography.labelLarge, color = animateColorAsState(if (selected) app.toggleOnText else app.toggleOffText, label = "rangeText").value) }
 }

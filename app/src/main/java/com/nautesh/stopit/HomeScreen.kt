@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nautesh.stopit.ui.theme.lobedShape
 import com.nautesh.stopit.ui.theme.LocalSemanticColors
+import com.nautesh.stopit.ui.theme.LocalAppColors
 
 @Composable
 fun HomeScreen(prefs: Prefs, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
@@ -65,11 +66,12 @@ fun HomeScreen(prefs: Prefs, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
     // The saved set can name apps that aren't installed (the defaults), so count installed ones only.
     val appCount = prefs.guarded.count { context.packageManager.getLaunchIntentForPackage(it) != null }
     val colors = MaterialTheme.colorScheme
+    val app = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
     // One 0..1 progress drives the whole on/off morph so colours, blob and type move together.
     val on by animateFloatAsState(if (guarding) 1f else 0f, tween(450, easing = FastOutSlowInEasing), label = "guard")
-    val cardColor = lerp(colors.surfaceContainerHigh, colors.primary, on)
-    val onCard = lerp(colors.onSurface, colors.onPrimary, on)
+    val cardColor = lerp(app.cardOff, app.cardOn, on)
+    val onCard = lerp(app.cardOffText, app.cardOnText, on)
 
     // The blob turns slowly while the guard is on and stops where it is when switched off.
     val spin = remember { Animatable(0f) }
@@ -84,15 +86,15 @@ fun HomeScreen(prefs: Prefs, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
                 fontSize = 52.sp,
                 lineHeight = 56.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = colors.primary,
+                color = app.screenAccent,
                 modifier = Modifier.weight(1f),
             )
             IconButton(
                 onClick = { settingsOpen = true },
-                colors = IconButtonDefaults.iconButtonColors(containerColor = colors.surfaceContainerHigh),
+                colors = IconButtonDefaults.iconButtonColors(containerColor = app.field),
                 modifier = Modifier.size(48.dp),
             ) {
-                Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings", tint = colors.onSurfaceVariant)
+                Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings", tint = colors.onSurface)
             }
         }
     }
@@ -111,7 +113,7 @@ fun HomeScreen(prefs: Prefs, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
                         .offset(x = 56.dp, y = (-56).dp)
                         .rotate(spin.value)
                         // Faint and tonal when off; a solid accent when on.
-                        .background(lerp(onCard.copy(alpha = 0.06f), colors.tertiaryContainer, on), lobedShape(lobes = 12, depth = 0.06f)),
+                        .background(lerp(onCard.copy(alpha = 0.06f), app.cardMark, on), lobedShape(lobes = 12, depth = 0.06f)),
                 )
                 // Tighter in landscape so today's counts fit below the card.
                 Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(if (isLandscape()) 12.dp else 28.dp)) {
@@ -120,8 +122,9 @@ fun HomeScreen(prefs: Prefs, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
                             if (guarding) "Guard is on" else "Guard is off",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = if (guarding) FontWeight.SemiBold else FontWeight.Normal,
+                            color = lerp(app.cardOffText, app.cardOnBadgeText, on),
                             modifier = Modifier
-                                .background(onCard.copy(alpha = 0.18f), RoundedCornerShape(16.dp))
+                                .background(lerp(app.cardOffBadge, app.cardOnBadge, on), RoundedCornerShape(16.dp))
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
                         )
                         Box(Modifier.weight(1f))
@@ -139,9 +142,9 @@ fun HomeScreen(prefs: Prefs, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
                                 null
                             },
                             colors = SwitchDefaults.colors(
-                                checkedTrackColor = colors.primaryContainer,
-                                checkedThumbColor = colors.onPrimaryContainer,
-                                checkedIconColor = colors.primaryContainer,
+                                checkedTrackColor = app.switchOnTrack,
+                                checkedThumbColor = app.switchOnThumb,
+                                checkedIconColor = app.switchOnTrack,
                             ),
                         )
                     }
