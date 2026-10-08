@@ -177,9 +177,6 @@ fun PauseSettingsScreen(prefs: Prefs, onPreview: () -> Unit) {
                     }
                     Switch(checked = amoled, onCheckedChange = null)
                 }
-                WipRow("Hold to continue", "Press and hold to open the app", RoundedCornerShape(6.dp))
-                WipRow("Breathing guide", "Shape grows and shrinks with breath", RoundedCornerShape(6.dp))
-                WipRow("Strict mode", "No skipping the pause", RoundedCornerShape(6.dp))
                 // Removing another app's task needs REMOVE_TASKS, which only the system, the shell user (Shizuku) or root holds.
                 WipRow("Clear from Recents", "Close also clears the app from Recents, through Shizuku", RoundedCornerShape(6.dp), tag = "Needs Shizuku")
                 WipRow("Clear from Recents", "Close also clears the app from Recents, through root", RoundedCornerShape(6.dp, 6.dp, 24.dp, 24.dp), tag = "Needs root")
@@ -202,9 +199,9 @@ fun PauseSettingsScreen(prefs: Prefs, onPreview: () -> Unit) {
     }
 }
 
-/** A setting that can't be switched on yet: greyed out, with a tag saying why ("Coming soon", or the access it needs). */
+/** A setting that can't be switched on yet: greyed out, with a tag naming the access it needs. */
 @Composable
-private fun WipRow(title: String, detail: String, shape: Shape, tag: String = "Coming soon") {
+private fun WipRow(title: String, detail: String, shape: Shape, tag: String) {
     val colors = MaterialTheme.colorScheme
     Row(
         Modifier
