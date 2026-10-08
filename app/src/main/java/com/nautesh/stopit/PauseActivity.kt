@@ -168,6 +168,8 @@ class PauseActivity : ComponentActivity() {
                             // No limit: allowed until the user leaves the app. A timed visit lasts its time, in and out of the app.
                             val until = if (minutes == null) PauseGate.NO_LIMIT else System.currentTimeMillis() + minutes * 60_000L
                             GuardService.gate?.allow(pkg, until)
+                            // Saved too, in case the service restarts before the time is up.
+                            if (minutes != null) prefs.saveAllowance(pkg, until)
                             prefs.recordOpened()
                         }
                         // The app's task is right below ours, so finishing returns to it as it was. Relaunching

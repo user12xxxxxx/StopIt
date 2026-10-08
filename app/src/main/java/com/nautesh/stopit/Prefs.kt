@@ -95,7 +95,21 @@ class Prefs(context: Context) {
         }
     }
 
+    /**
+     * Saves a timed visit ("Open for 5 min"), so it outlasts the guard service: Android may kill and restart it, for
+     * example when the user clears apps from Recents, and the service's allowances live in memory.
+     */
+    fun saveAllowance(pkg: String, untilMillis: Long) = prefs.edit { putLong(ALLOW + pkg, untilMillis) }
+
+    /** Timed visits still running at [nowMillis]; ones that have run out are deleted. */
+    fun liveAllowances(nowMillis: Long): Map<String, Long> {
+        val saved = prefs.all.filterKeys { it.startsWith(ALLOW) }.mapValues { it.value as? Long ?: 0L }
+        prefs.edit { saved.filterValues { it <= nowMillis }.keys.forEach(::remove) }
+        return saved.filterValues { it > nowMillis }.mapKeys { it.key.removePrefix(ALLOW) }
+    }
+
     companion object {
+        private const val ALLOW = "allow:"
         private const val HIST = "hist:"
         private const val HISTORY_DAYS = 28L
 

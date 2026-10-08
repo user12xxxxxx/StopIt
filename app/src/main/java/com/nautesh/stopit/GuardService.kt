@@ -67,7 +67,10 @@ class GuardService : Service() {
             Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
             PackageManager.MATCH_DEFAULT_ONLY,
         ).map { it.activityInfo.packageName }.toSet()
-        gate = PauseGate(packageName, launchers) { prefs.guarded }
+        gate = PauseGate(packageName, launchers) { prefs.guarded }.apply {
+            // Timed visits from before a restart still count.
+            prefs.liveAllowances(System.currentTimeMillis()).forEach { (pkg, until) -> allow(pkg, until) }
+        }
 
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(CHANNEL, "Guard", NotificationManager.IMPORTANCE_MIN))
