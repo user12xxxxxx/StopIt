@@ -12,3 +12,7 @@
 /dist/
 .claude/
 CLAUDE.md
+
+# Screenshots and screen recordings dropped into the project folder
+/Screenshot_*
+/Screen_recording_*
