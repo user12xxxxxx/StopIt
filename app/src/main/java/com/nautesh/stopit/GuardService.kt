@@ -9,7 +9,6 @@ import android.app.usage.UsageStatsManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Handler
@@ -37,8 +36,6 @@ class GuardService : Service() {
         // ponytail: polls usage events twice a second; switch to an AccessibilityService if this lags or drains battery.
         private const val POLL_MS = 500L
         private const val CHANNEL = "guard"
-        // A shorter lock is a glance away and keeps the visit.
-        private const val LONG_LOCK_MS = 3 * 60_000L
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -47,7 +44,7 @@ class GuardService : Service() {
     private lateinit var power: PowerManager
     private lateinit var keyguard: KeyguardManager
     private var since = 0L
-    private var lockedSince = 0L
+    private var locked = false
 
     private val poll = object : Runnable {
         override fun run() {
@@ -62,12 +59,7 @@ class GuardService : Service() {
         prefs = Prefs(this)
         power = getSystemService(PowerManager::class.java)
         keyguard = getSystemService(KeyguardManager::class.java)
-        // ponytail: launchers read once per service start; a newly installed launcher counts after the next start.
-        val launchers = packageManager.queryIntentActivities(
-            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
-            PackageManager.MATCH_DEFAULT_ONLY,
-        ).map { it.activityInfo.packageName }.toSet()
-        gate = PauseGate(packageName, launchers) { prefs.guarded }.apply {
+        gate = PauseGate(packageName) { prefs.guarded }.apply {
             // Timed visits from before a restart still count.
             prefs.liveAllowances(System.currentTimeMillis()).forEach { (pkg, until) -> allow(pkg, until) }
         }
@@ -98,13 +90,13 @@ class GuardService : Service() {
 
     private fun check() {
         val now = System.currentTimeMillis()
-        // Never pause behind the lock screen. Coming back after a long lock counts as reopening the app.
+        // Never pause behind the lock screen. Locking ends visits with no limit, so unlocking pauses the app again.
         if (!power.isInteractive || keyguard.isKeyguardLocked) {
-            if (lockedSince == 0L) lockedSince = now
+            locked = true
             return
         }
-        if (lockedSince != 0L && now - lockedSince >= LONG_LOCK_MS) gate?.reset()
-        lockedSince = 0L
+        if (locked) gate?.reset()
+        locked = false
         val events = usage.queryEvents(since, now)
         since = now
         val event = UsageEvents.Event()

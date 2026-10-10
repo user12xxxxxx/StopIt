@@ -4,18 +4,17 @@ package com.nautesh.stopit
  * Decides when a foreground change needs the pause screen.
  *
  * An app the user chose to open with a time limit stays allowed until that time is up, even if
- * they leave it and come back. One opened with no limit stays allowed until they go to the
- * launcher (home or recents). Either way, switching between its own screens doesn't pause it
+ * they leave it and come back. One opened with no limit stays allowed until the phone is locked
+ * ([reset]), even through the launcher. Either way, switching between its own screens doesn't pause it
  * again. Allowances are per app: following a link from one allowed app into another guarded
  * app pauses that one, and going back doesn't pause the first again.
  */
 class PauseGate(
     private val ownPackage: String,
-    private val launchers: Set<String>,
     private val guarded: () -> Set<String>,
 ) {
     companion object {
-        /** An allowance with no time limit: it lasts until the user leaves the app. */
+        /** An allowance with no time limit: it lasts until the phone is locked. */
         const val NO_LIMIT = Long.MAX_VALUE
     }
 
@@ -41,8 +40,6 @@ class PauseGate(
     fun onForeground(pkg: String, nowMillis: Long): Boolean {
         if (pkg == current) return false
         current = pkg
-        // Leaving through the launcher ends visits with no limit; timed ones run on until their time is up.
-        if (pkg in launchers) allowedUntil.values.removeAll { it == NO_LIMIT }
         return pkg != ownPackage && pkg in guarded() && nowMillis >= (allowedUntil[pkg] ?: 0L)
     }
 

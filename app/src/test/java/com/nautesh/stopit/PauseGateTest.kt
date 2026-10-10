@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PauseGateTest {
-    private val gate = PauseGate("me", setOf("launcher")) { setOf("insta", "tiktok") }
+    private val gate = PauseGate("me") { setOf("insta", "tiktok") }
 
     @Test
     fun detourThroughOtherAppKeepsTheVisit() {
@@ -29,7 +29,7 @@ class PauseGateTest {
         gate.allow("tiktok", untilMillis = PauseGate.NO_LIMIT)
         assertFalse(gate.onForeground("tiktok", 0))
         assertFalse(gate.onForeground("insta", 0))
-        gate.onForeground("launcher", 0)
+        gate.reset()
         assertTrue(gate.onForeground("insta", 0))
     }
 
@@ -51,12 +51,15 @@ class PauseGateTest {
     }
 
     @Test
-    fun noLimitVisitLastsUntilUserLeaves() {
+    fun noLimitVisitLastsUntilLock() {
         assertTrue(gate.onForeground("insta", 0))
         assertFalse(gate.onForeground("me", 0))
         gate.allow("insta", untilMillis = PauseGate.NO_LIMIT)
         assertFalse(gate.onForeground("insta", 0))
         assertFalse(gate.onForeground("launcher", 0))
+        assertFalse(gate.onForeground("insta", 0))
+        gate.onForeground("launcher", 0)
+        gate.reset()
         assertTrue(gate.onForeground("insta", 0))
     }
 
